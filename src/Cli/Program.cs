@@ -10,6 +10,6 @@ while (true)
         continue;
     }
 
-    var tokens = Lexer.Tokenize(input);
-    Console.WriteLine(string.Join(", ", tokens.Select(t => t.ToString())));
+    Parser parser = new Parser(input);
+    Parser.PrettyPrint(parser.Parse(), isFirst: true);
 }
