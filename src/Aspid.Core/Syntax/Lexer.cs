@@ -1,5 +1,5 @@
 ﻿
-namespace Core.Syntax;
+namespace Aspid.Core.Syntax;
 
 public static class Lexer
 {

@@ -1,4 +1,4 @@
-﻿using Core.Syntax;
+﻿using Aspid.Core.Syntax;
 
 while (true)
 {

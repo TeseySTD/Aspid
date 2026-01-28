@@ -1,4 +1,4 @@
-﻿namespace Core.Syntax;
+﻿namespace Aspid.Core.Syntax;
 
 public class Parser(string text)
 {
