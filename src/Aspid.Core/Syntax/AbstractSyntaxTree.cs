@@ -30,6 +30,17 @@ public sealed record NumberExpression(Lexer.Token NumberToken) : Expression
     }
 }
 
+public sealed record StringExpression(
+    Lexer.Token StringToken) : Expression
+{
+    public override string Kind => nameof(StringExpression);
+
+    public override IEnumerable<SyntaxNode> GetChildren()
+    {
+        yield break;
+    }
+}
+
 public sealed record VariableExpression(Lexer.Token VariableName) : Expression
 {
     public override string Kind => nameof(VariableExpression);

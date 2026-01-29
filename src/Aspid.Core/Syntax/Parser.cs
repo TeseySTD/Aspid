@@ -162,6 +162,9 @@ public class Parser(string text)
             case Lexer.LexerTokenKind.Number:
                 return new NumberExpression(NextToken());
 
+            case Lexer.LexerTokenKind.String:
+                return new StringExpression(NextToken());
+            
             case Lexer.LexerTokenKind.Id:
                 return new VariableExpression(NextToken());
 

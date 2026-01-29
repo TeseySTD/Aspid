@@ -1,5 +1,4 @@
-﻿
-namespace Aspid.Core.Syntax;
+﻿namespace Aspid.Core.Syntax;
 
 public static class Lexer
 {
@@ -13,15 +12,27 @@ public static class Lexer
         // Values
         Id,
         Number,
+        String,
 
         // Puncts (Simple)
-        Eq, Plus, Minus, Star, Div, Colon,
-        OParen, CParen, OBracket, CBracket,
+        Eq,
+        Plus,
+        Minus,
+        Star,
+        Div,
+        Colon,
+        OParen,
+        CParen,
+        OBracket,
+        CBracket,
         Comma,
-        
+
         // Puncts (Compound)
-        EqEq, NotEq, PlusEq, MinusEq, 
-        
+        EqEq,
+        NotEq,
+        PlusEq,
+        MinusEq,
+
         // Terminal
         UndefinedToken,
         EndOfFile
@@ -33,17 +44,17 @@ public static class Lexer
         ("!=", LexerTokenKind.NotEq),
         ("+=", LexerTokenKind.PlusEq),
         ("-=", LexerTokenKind.MinusEq),
-        ("=",  LexerTokenKind.Eq),
-        ("+",  LexerTokenKind.Plus),
-        ("-",  LexerTokenKind.Minus),
-        ("*",  LexerTokenKind.Star),
-        ("/",  LexerTokenKind.Div),
-        ("(",  LexerTokenKind.OParen),
-        (")",  LexerTokenKind.CParen),
-        ("[",  LexerTokenKind.OBracket),
-        ("]",  LexerTokenKind.CBracket),
-        (":",  LexerTokenKind.Colon),
-        (",",  LexerTokenKind.Comma)
+        ("=", LexerTokenKind.Eq),
+        ("+", LexerTokenKind.Plus),
+        ("-", LexerTokenKind.Minus),
+        ("*", LexerTokenKind.Star),
+        ("/", LexerTokenKind.Div),
+        ("(", LexerTokenKind.OParen),
+        (")", LexerTokenKind.CParen),
+        ("[", LexerTokenKind.OBracket),
+        ("]", LexerTokenKind.CBracket),
+        (":", LexerTokenKind.Colon),
+        (",", LexerTokenKind.Comma)
     };
 
     private static readonly (string Text, LexerTokenKind Kind)[] SortedOperators;
@@ -86,6 +97,12 @@ public static class Lexer
                 continue;
             }
 
+            if (current == '"')
+            {
+                tokens.Add(ParseString(text, position, ref position));
+                continue;
+            }
+
             if (TryMatchOperator(text, position, out var opToken, out int length))
             {
                 tokens.Add(opToken);
@@ -105,7 +122,7 @@ public static class Lexer
     {
         foreach (var op in SortedOperators)
         {
-            if (position + op.Text.Length > text.Length) 
+            if (position + op.Text.Length > text.Length)
                 continue;
 
             if (string.CompareOrdinal(text, position, op.Text, 0, op.Text.Length) == 0)
@@ -175,5 +192,26 @@ public static class Lexer
 
         string value = text.Substring(start, position - start);
         return new Token(value, LexerTokenKind.Number, start, position);
+    }
+
+    private static Token ParseString(string text, int start, ref int position)
+    {
+        position++; 
+
+        while (position < text.Length && text[position] != '"')
+        {
+            position++;
+        }
+
+        if (position >= text.Length)
+        {
+            throw new Exception("Unterminated string literal");
+        }
+
+        position++; 
+
+        string value = text.Substring(start + 1, position - start - 2); // Skip quotes
+
+        return new Token(value, LexerTokenKind.String, start, position);
     }
 }
