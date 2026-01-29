@@ -15,8 +15,9 @@ public static class Lexer
         Number,
 
         // Puncts (Simple)
-        Eq, Plus, Minus, Star, Div, 
+        Eq, Plus, Minus, Star, Div, Colon,
         OParen, CParen, OBracket, CBracket,
+        Comma,
         
         // Puncts (Compound)
         EqEq, NotEq, PlusEq, MinusEq, 
@@ -41,6 +42,8 @@ public static class Lexer
         (")",  LexerTokenKind.CParen),
         ("[",  LexerTokenKind.OBracket),
         ("]",  LexerTokenKind.CBracket),
+        (":",  LexerTokenKind.Colon),
+        (",",  LexerTokenKind.Comma)
     };
 
     private static readonly (string Text, LexerTokenKind Kind)[] SortedOperators;

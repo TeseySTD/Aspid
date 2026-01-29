@@ -11,5 +11,7 @@ while (true)
     }
 
     Parser parser = new Parser(input);
-    Parser.PrettyPrint(parser.Parse(), isFirst: true);
+    var statements = parser.Parse();
+    foreach (var statement in statements)
+        Parser.PrettyPrint(statement, isFirst: true);
 }

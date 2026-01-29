@@ -27,19 +27,6 @@ public class Parser(string text)
         return null;
     }
 
-    public SyntaxNode Parse()
-    {
-        var expression = ParseExpression();
-
-        if (Current.Kind != Lexer.LexerTokenKind.EndOfFile)
-        {
-            throw new Exception($"Unexpected token <{Current.Kind}> after expression.");
-        }
-
-        return expression;
-    }
-
-
     private static int GetBinaryOperatorPrecedence(Lexer.LexerTokenKind kind)
     {
         return kind switch
@@ -50,30 +37,84 @@ public class Parser(string text)
         };
     }
 
-    private Expression ParseExpression()
+    public IEnumerable<Statement> Parse()
     {
-        return ParseAssignmentExpression();
-    }
+        var statements = ParseCompilationUnit();
 
-    private Expression ParseAssignmentExpression()
-    {
-        var left = ParseBinaryExpression();
-
-        if (Current.Kind == Lexer.LexerTokenKind.Eq)
+        if (Current.Kind != Lexer.LexerTokenKind.EndOfFile)
         {
-            if (left is VariableExpression variable)
-            {
-                NextToken();
-
-                var right = ParseAssignmentExpression();
-
-                return new AssignmentExpression(variable, right);
-            }
-
-            throw new Exception("Cannot assign to something that is not a variable");
+            throw new Exception($"Unexpected token <{Current.Kind}> after expression.");
         }
 
-        return left;
+        return statements;
+    }
+
+    private IEnumerable<Statement> ParseCompilationUnit()
+    {
+        var statements = new List<Statement>();
+        while (Current.Kind != Lexer.LexerTokenKind.EndOfFile)
+        {
+            statements.Add(ParseStatement());
+        }
+
+        return statements;
+    }
+
+    private Statement ParseStatement()
+    {
+        if (Current.Kind == Lexer.LexerTokenKind.Id &&
+            Peek(1).Kind == Lexer.LexerTokenKind.Colon)
+        {
+            return ParseVariableDeclaration();
+        }
+
+        if (Current.Kind == Lexer.LexerTokenKind.Id &&
+            Peek(1).Kind == Lexer.LexerTokenKind.Eq)
+        {
+            return ParseAssignmentStatement();
+        }
+
+        var expression = ParseExpression();
+
+        return new ExpressionStatement(expression);
+    }
+
+    private Statement ParseVariableDeclaration()
+    {
+        var identifier = Match(Lexer.LexerTokenKind.Id)
+                         ?? throw new Exception("Expected identifier");
+
+        Match(Lexer.LexerTokenKind.Colon);
+
+        var typeIdentifier = Match(Lexer.LexerTokenKind.Id)
+                             ?? throw new Exception("Expected type identifier");
+
+        var eq = Match(Lexer.LexerTokenKind.Eq);
+
+        if (eq is null)
+            return new VariableDeclarationStatement(identifier, typeIdentifier,
+                null); // Allow to only init variables e.g - count: int
+
+        var initializer = ParseExpression();
+
+        return new VariableDeclarationStatement(identifier, typeIdentifier, initializer);
+    }
+
+    private Statement ParseAssignmentStatement()
+    {
+        var identifier = Match(Lexer.LexerTokenKind.Id) ?? throw new Exception("Expected Id");
+
+        Match(Lexer.LexerTokenKind.Eq);
+
+        var right = ParseExpression();
+
+        return new AssignmentStatement(identifier, right);
+    }
+
+
+    private Expression ParseExpression()
+    {
+        return ParseBinaryExpression();
     }
 
     private Expression ParseBinaryExpression(int parentPrecedence = 0)
@@ -94,8 +135,20 @@ public class Parser(string text)
         return left;
     }
 
-
     private Expression ParsePrimary()
+    {
+        Expression left = ParseAtom();
+
+        while (Current.Kind == Lexer.LexerTokenKind.OParen)
+        {
+            left = ParseCallExpression(left);
+        }
+
+        return left;
+    }
+
+
+    private Expression ParseAtom()
     {
         switch (Current.Kind)
         {
@@ -117,6 +170,28 @@ public class Parser(string text)
         }
     }
 
+    private Expression ParseCallExpression(Expression function)
+    {
+        NextToken(); 
+        var arguments = new List<Expression>();
+
+        if (Current.Kind != Lexer.LexerTokenKind.CParen)
+        {
+            while (true)
+            {
+                arguments.Add(ParseExpression());
+
+                if (Current.Kind != Lexer.LexerTokenKind.Comma) 
+                    break;
+
+                NextToken();
+            }
+        }
+
+        if (Match(Lexer.LexerTokenKind.CParen) is null) throw new Exception("Expected ')'");
+
+        return new CallExpression(function, arguments);
+    }
 
     public static void PrettyPrint(SyntaxNode node, string indent = "", bool isFirst = false, bool isLast = true)
     {

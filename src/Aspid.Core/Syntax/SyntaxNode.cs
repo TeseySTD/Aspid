@@ -8,6 +8,18 @@ public abstract record SyntaxNode
 
 public abstract record Expression : SyntaxNode;
 
+public abstract record Statement : SyntaxNode;
+
+public sealed record ExpressionStatement(Expression Expression) : Statement
+{
+    public override string Kind => nameof(ExpressionStatement);
+
+    public override IEnumerable<SyntaxNode> GetChildren()
+    {
+        yield return Expression;
+    }
+}
+
 public sealed record NumberExpression(Lexer.Token NumberToken) : Expression
 {
     public override string Kind => nameof(NumberExpression);
@@ -40,15 +52,42 @@ public sealed record BinaryExpression(Expression Left, Lexer.Token OperatorToken
     }
 }
 
-public sealed record AssignmentExpression(VariableExpression Left, Expression Right)
-    : Expression
+public sealed record CallExpression(Expression Function, List<Expression> Arguments) : Expression
 {
-    public override string Kind => nameof(AssignmentExpression);
+    public override string Kind => nameof(CallExpression);
 
     public override IEnumerable<SyntaxNode> GetChildren()
     {
-        yield return Left;
-        yield return Right;
+        yield return Function;
+        foreach (var arg in Arguments) yield return arg;
+    }
+}
+
+public sealed record AssignmentStatement(
+    Lexer.Token IdentifierToken,
+    Expression Expression
+) : Statement
+{
+    public override string Kind => nameof(AssignmentStatement);
+
+    public override IEnumerable<SyntaxNode> GetChildren()
+    {
+        yield return Expression;
+    }
+}
+
+public sealed record VariableDeclarationStatement(
+    Lexer.Token Variable,
+    Lexer.Token TypeIdentifier,
+    Expression? Initializer
+) : Statement
+{
+    public override string Kind => nameof(VariableDeclarationStatement);
+
+    public override IEnumerable<SyntaxNode> GetChildren()
+    {
+        if (Initializer != null)
+            yield return Initializer;
     }
 }
 
