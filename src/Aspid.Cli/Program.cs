@@ -1,4 +1,7 @@
-﻿using Aspid.Core.Syntax;
+﻿using Aspid.Core.Binding;
+using Aspid.Core.Syntax;
+
+Binder binder = new Binder(new());
 
 while (true)
 {
@@ -12,6 +15,7 @@ while (true)
 
     Parser parser = new Parser(input);
     var statements = parser.Parse();
-    foreach (var statement in statements)
-        Parser.PrettyPrint(statement, isFirst: true);
+    var boundNodes = statements.Select(binder.Bind);
+    foreach (var node in boundNodes)
+        Binder.PrettyPrint(node, isFirst: true);
 }
