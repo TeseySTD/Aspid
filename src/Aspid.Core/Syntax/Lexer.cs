@@ -90,16 +90,21 @@ public static class Lexer
                 continue;
             }
 
+            switch (current)
+            {
+                // Strings
+                case '"':
+                    tokens.Add(ParseString(text, position, ref position));
+                    continue;
+                case 'f' when position + 1 < text.Length && text[position + 1] == '"':
+                    tokens.AddRange(ParseFormatedString(text, position, ref position));
+                    continue;
+            }
+
             // Identifiers (Variables, Keywords)
             if (char.IsLetter(current) || current == '_')
             {
                 tokens.Add(ParseId(text, position, ref position));
-                continue;
-            }
-
-            if (current == '"')
-            {
-                tokens.Add(ParseString(text, position, ref position));
                 continue;
             }
 
@@ -196,7 +201,7 @@ public static class Lexer
 
     private static Token ParseString(string text, int start, ref int position)
     {
-        position++; 
+        position++;
 
         while (position < text.Length && text[position] != '"')
         {
@@ -208,10 +213,109 @@ public static class Lexer
             throw new Exception("Unterminated string literal");
         }
 
-        position++; 
+        position++; // Skip '"'
 
         string value = text.Substring(start + 1, position - start - 2); // Skip quotes
 
         return new Token(value, LexerTokenKind.String, start, position);
+    }
+
+
+    private static List<Token> ParseFormatedString(string text, int start, ref int position)
+    {
+        List<Token> resultTokens =
+        [
+            new ("(", LexerTokenKind.OParen, start, start + 1) // Virtual '('
+        ];
+
+        position += 2; // Skip f"
+
+        var chunkStart = position;
+
+        while (position < text.Length)
+        {
+            char c = text[position];
+
+            // End of line 
+            if (c == '"')
+            {
+                if (position > chunkStart)
+                {
+                    string strContent = text.Substring(chunkStart, position - chunkStart);
+                    resultTokens.Add(new Token(strContent, LexerTokenKind.String, chunkStart, position));
+                }
+                else
+                {
+                    // If was no text e.g f"{a}" add empty string 
+                    resultTokens.Add(new Token("", LexerTokenKind.String, position, position));
+                }
+
+                break;
+            }
+
+            if (c == '{')
+            {
+                if (position > chunkStart)
+                {
+                    string strContent = text.Substring(chunkStart, position - chunkStart);
+                    resultTokens.Add(new Token(strContent, LexerTokenKind.String, chunkStart, position));
+
+                    // Replace '{' with + to make explicit concatenation
+                    resultTokens.Add(new Token("+", LexerTokenKind.Plus, position, position + 1));
+                }
+
+                int braceStart = position;
+                position++; // Skip {
+
+                int expressionStart = position;
+                while (position < text.Length && text[position] != '}')
+                {
+                    position++;
+                }
+
+                if (position >= text.Length) throw new Exception("Unclosed brace in f-string");
+
+                int expressionEnd = position;
+
+                string expressionText = text.Substring(expressionStart, expressionEnd - expressionStart);
+
+                var subTokens = Tokenize(expressionText);
+
+                // Add parenthesis around expressions ( {expr} -> (expr) )
+                resultTokens.Add(new Token("(", LexerTokenKind.OParen, braceStart, braceStart + 1));
+
+                foreach (var t in subTokens)
+                {
+                    if (t.Kind == LexerTokenKind.EndOfFile) continue; 
+                    // Change position of token to original one
+                    resultTokens.Add(t with
+                    {
+                        Start = t.Start + expressionStart,
+                        End = t.End + expressionStart
+                    });
+                }
+
+                resultTokens.Add(new Token(")", LexerTokenKind.CParen, position, position + 1));
+
+                if (position + 1 < text.Length)
+                {
+                    resultTokens.Add(new Token("+", LexerTokenKind.Plus, position, position + 1));
+                }
+
+
+                chunkStart = position + 1; 
+            }
+
+            position++;
+        }
+
+        if (position >= text.Length) throw new Exception("Unterminated f-string");
+
+        position++; // Skip "
+
+        // Virtual ')'
+        resultTokens.Add(new Token(")", LexerTokenKind.CParen, position - 1, position));
+
+        return resultTokens;
     }
 }

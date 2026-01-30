@@ -30,8 +30,7 @@ public sealed record NumberExpression(Lexer.Token NumberToken) : Expression
     }
 }
 
-public sealed record StringExpression(
-    Lexer.Token StringToken) : Expression
+public sealed record StringExpression(Lexer.Token StringToken) : Expression
 {
     public override string Kind => nameof(StringExpression);
 
