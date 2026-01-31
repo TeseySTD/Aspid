@@ -97,6 +97,19 @@ public class Binder
     {
         object value;
         var text = syntax.NumberToken.Text;
+        if (text.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+        {
+            var hexText = text.Substring(2);
+
+            if (int.TryParse(hexText, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out int hexValue))
+            {
+                return new BoundLiteralExpression(hexValue);
+            }
+
+            var errText = $"Invalid hex number: {text}";
+            Diagnostics.Add(errText);
+            return new BoundErrorNode(errText);
+        }
 
         if (int.TryParse(text, NumberStyles.Any, CultureInfo.InvariantCulture, out int intValue))
             value = intValue;
@@ -138,7 +151,7 @@ public class Binder
 
         if (boundOperand.Type == TypeSymbol.Error)
             return new BoundErrorNode(""); // Replace recursion
-        
+
         var operatorKind = BoundUnaryOperator.GetOperatorKind(syntax.OperatorToken.Kind);
         if (operatorKind is null)
         {
@@ -146,7 +159,7 @@ public class Binder
             Diagnostics.Add(errText);
             return new BoundErrorNode(errText);
         }
-        
+
         var boundOperator = BoundUnaryOperator.Bind(operatorKind.Value, boundOperand.Type);
         if (boundOperator == null)
         {
