@@ -49,8 +49,8 @@ public class Evaluator
     private object EvaluateAssignment(BoundAssignmentStatement node)
     {
         var value = Evaluate(node.Expression);
-        _variables[node.Variable.Name] = value!;
-        return value!;
+        _variables[node.Variable.Name] = value ?? throw new Exception($"Unexpected node {node.Type} in assignment.");
+        return value;
     }
 
     private object EvaluateVariableExpression(BoundVariableExpression node)
@@ -60,12 +60,12 @@ public class Evaluator
 
     private object EvaluateUnaryExpression(BoundUnaryExpression node)
     {
-        var operand = Evaluate(node.Operand);
+        var operand = Evaluate(node.Operand) ?? throw new Exception($"Unexpected node {node.Operand.Type} in unary expression.");
 
         return node.Op.Kind switch
         {
-            BoundUnaryOperatorKind.Identity => operand!, 
-            BoundUnaryOperatorKind.Negation => EvaluateNegation(node, operand!),
+            BoundUnaryOperatorKind.Identity => operand, 
+            BoundUnaryOperatorKind.Negation => EvaluateNegation(node, operand),
             _ => throw new Exception($"Unexpected unary operator {node.Op.Kind}")
         };
     }
@@ -83,8 +83,8 @@ public class Evaluator
 
     private object EvaluateBinaryExpression(BoundBinaryExpression node)
     {
-        var left = Evaluate(node.Left)!;
-        var right = Evaluate(node.Right)!;
+        var left = Evaluate(node.Left) ?? throw new Exception($"Unexpected node {node.Left.Type} in binary expression.");
+        var right = Evaluate(node.Right) ?? throw new Exception($"Unexpected node {node.Right.Type} in binary expression.");
 
         return node.Op.Kind switch
         {
