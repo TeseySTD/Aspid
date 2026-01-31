@@ -18,12 +18,13 @@ public class Evaluator
             // Statements
             BoundVariableDeclarationStatement v => EvaluateVariableDeclaration(v),
             BoundAssignmentStatement a => EvaluateAssignment(a),
-            
+
             // Expressions
             BoundLiteralExpression l => l.Value,
             BoundVariableExpression v => EvaluateVariableExpression(v),
+            BoundUnaryExpression un => EvaluateUnaryExpression(un),
             BoundBinaryExpression b => EvaluateBinaryExpression(b),
-            
+
             // Error Node
             BoundErrorNode => null,
 
@@ -34,9 +35,14 @@ public class Evaluator
     private object? EvaluateVariableDeclaration(BoundVariableDeclarationStatement node)
     {
         var value = node.Initializer != null ? Evaluate(node.Initializer) : null;
-        
-        _variables[node.Variable.Name] = value!;
-        
+
+        if (value == null)
+        {
+            return null;
+        }
+
+        _variables[node.Variable.Name] = value;
+
         return value;
     }
 
@@ -50,6 +56,29 @@ public class Evaluator
     private object EvaluateVariableExpression(BoundVariableExpression node)
     {
         return _variables[node.Name];
+    }
+
+    private object EvaluateUnaryExpression(BoundUnaryExpression node)
+    {
+        var operand = Evaluate(node.Operand);
+
+        return node.Op.Kind switch
+        {
+            BoundUnaryOperatorKind.Identity => operand!, 
+            BoundUnaryOperatorKind.Negation => EvaluateNegation(node, operand!),
+            _ => throw new Exception($"Unexpected unary operator {node.Op.Kind}")
+        };
+    }
+
+    private object EvaluateNegation(BoundUnaryExpression node, object operand)
+    {
+        if (node.Type == TypeSymbol.Double)
+            return -(double)operand;
+
+        if (node.Type == TypeSymbol.Int)
+            return -(int)operand;
+
+        throw new Exception($"Unexpected type {node.Type} for negation");
     }
 
     private object EvaluateBinaryExpression(BoundBinaryExpression node)
@@ -87,7 +116,7 @@ public class Evaluator
     {
         if (node.Type == TypeSymbol.Double)
             return Convert.ToDouble(left) - Convert.ToDouble(right);
-        
+
         return Convert.ToInt32(left) - Convert.ToInt32(right);
     }
 
@@ -95,7 +124,7 @@ public class Evaluator
     {
         if (node.Type == TypeSymbol.Double)
             return Convert.ToDouble(left) * Convert.ToDouble(right);
-        
+
         return Convert.ToInt32(left) * Convert.ToInt32(right);
     }
 
@@ -103,7 +132,7 @@ public class Evaluator
     {
         if (node.Type == TypeSymbol.Double)
             return Convert.ToDouble(left) / Convert.ToDouble(right);
-        
+
         return Convert.ToInt32(left) / Convert.ToInt32(right);
     }
 

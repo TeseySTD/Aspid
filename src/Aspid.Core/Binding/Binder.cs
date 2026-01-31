@@ -28,26 +28,28 @@ public class Binder
     {
         var name = declaration.Variable.Text;
         var initializer = declaration.Initializer is not null ? BindExpression(declaration.Initializer) : null;
-        var type = TypeSymbol.Parse(declaration.TypeIdentifier.Text); 
+        var type = TypeSymbol.Parse(declaration.TypeIdentifier.Text);
         if (type is null) // Remove that check when add custom types
         {
-            var incorrectTypeError = $"Variable declaration {declaration.Variable.Text} has no correct type {declaration.TypeIdentifier.Text}.";
+            var incorrectTypeError =
+                $"Variable declaration {declaration.Variable.Text} has no correct type {declaration.TypeIdentifier.Text}.";
             Diagnostics.Add(incorrectTypeError);
-            return new BoundErrorNode(incorrectTypeError) ;
-            
+            return new BoundErrorNode(incorrectTypeError);
         }
+
         var variable = new BoundVariableExpression(name, type);
 
         if (initializer != null && initializer.Type != type)
         {
-            var assignWrongTypeError = $"Variable '{name}' with type {type.Name} cannot be assigned to type '{initializer.Type.Name}'.";
+            var assignWrongTypeError =
+                $"Variable '{name}' with type {type.Name} cannot be assigned to type '{initializer.Type.Name}'.";
             Diagnostics.Add(assignWrongTypeError);
             return new BoundErrorNode(assignWrongTypeError);
         }
 
         if (_variables.TryAdd(name, type))
             return new BoundVariableDeclarationStatement(variable, initializer);
-        
+
         var alreadyDeclaredError = $"Cannot declare variable with name {name} because it is already declared.";
         Diagnostics.Add(alreadyDeclaredError);
         return new BoundErrorNode(alreadyDeclaredError);
@@ -83,6 +85,7 @@ public class Binder
             ParenthesizedExpression p => BindExpression(p.Expression),
             NumberExpression n => BindNumberExpression(n),
             StringExpression str => BindStringExpression(str),
+            UnaryExpression un => BindUnaryExpression(un),
             BinaryExpression b => BindBinaryExpression(b),
             VariableExpression v => BindVariableExpression(v),
             _ => throw new Exception($"Unexpected syntax {syntax.Kind}")
@@ -129,6 +132,33 @@ public class Binder
         return new BoundVariableExpression(name, type);
     }
 
+    private BoundNode BindUnaryExpression(UnaryExpression syntax)
+    {
+        var boundOperand = BindExpression(syntax.Operand);
+
+        if (boundOperand.Type == TypeSymbol.Error)
+            return new BoundErrorNode(""); // Replace recursion
+        
+        var operatorKind = BoundUnaryOperator.GetOperatorKind(syntax.OperatorToken.Kind);
+        if (operatorKind is null)
+        {
+            var errText = $"Unary operator '{syntax.OperatorToken.Text}' is not supported.";
+            Diagnostics.Add(errText);
+            return new BoundErrorNode(errText);
+        }
+        
+        var boundOperator = BoundUnaryOperator.Bind(operatorKind.Value, boundOperand.Type);
+        if (boundOperator == null)
+        {
+            var message =
+                $"Unary operator '{syntax.OperatorToken.Text}' is not defined for type '{boundOperand.Type}'.";
+            Diagnostics.Add(message);
+            return new BoundErrorNode(message);
+        }
+
+        return new BoundUnaryExpression(boundOperator, boundOperand);
+    }
+
     private BoundNode BindBinaryExpression(BinaryExpression syntax)
     {
         var boundLeft = BindExpression(syntax.Left);
@@ -172,7 +202,7 @@ public class Binder
                 if (isInitialized)
                     PrettyPrint(vd.Initializer!, indent, isLast: true);
                 break;
-            
+
             case BoundAssignmentStatement a:
                 PrettyPrint(a.Variable, indent, isLast: false);
                 PrettyPrint(a.Expression, indent, isLast: true);

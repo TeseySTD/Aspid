@@ -119,7 +119,7 @@ public class Parser(string text)
 
     private Expression ParseBinaryExpression(int parentPrecedence = 0)
     {
-        var left = ParsePrimary();
+        var left = ParseUnaryExpression();
 
         while (true)
         {
@@ -133,6 +133,20 @@ public class Parser(string text)
         }
 
         return left;
+    }
+
+    private Expression ParseUnaryExpression()
+    {
+        if (Current.Kind == Lexer.LexerTokenKind.Plus ||
+            Current.Kind == Lexer.LexerTokenKind.Minus)
+        {
+            var operatorToken = NextToken();
+            var operand = ParseUnaryExpression(); 
+
+            return new UnaryExpression(operatorToken, operand);
+        }
+
+        return ParsePrimary();
     }
 
     private Expression ParsePrimary()
@@ -164,7 +178,7 @@ public class Parser(string text)
 
             case Lexer.LexerTokenKind.String:
                 return new StringExpression(NextToken());
-            
+
             case Lexer.LexerTokenKind.Id:
                 return new VariableExpression(NextToken());
 
@@ -175,7 +189,7 @@ public class Parser(string text)
 
     private Expression ParseCallExpression(Expression function)
     {
-        NextToken(); 
+        NextToken();
         var arguments = new List<Expression>();
 
         if (Current.Kind != Lexer.LexerTokenKind.CParen)
@@ -184,7 +198,7 @@ public class Parser(string text)
             {
                 arguments.Add(ParseExpression());
 
-                if (Current.Kind != Lexer.LexerTokenKind.Comma) 
+                if (Current.Kind != Lexer.LexerTokenKind.Comma)
                     break;
 
                 NextToken();

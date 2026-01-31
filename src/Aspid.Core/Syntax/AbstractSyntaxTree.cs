@@ -62,6 +62,16 @@ public sealed record BinaryExpression(Expression Left, Lexer.Token OperatorToken
     }
 }
 
+public sealed record UnaryExpression(Lexer.Token OperatorToken, Expression Operand) : Expression
+{
+    public override string Kind => nameof(UnaryExpression);
+
+    public override IEnumerable<SyntaxNode> GetChildren()
+    {
+        yield return Operand;
+    }
+}
+
 public sealed record CallExpression(Expression Function, List<Expression> Arguments) : Expression
 {
     public override string Kind => nameof(CallExpression);

@@ -35,6 +35,62 @@ public sealed class TypeSymbol
     };
 }
 
+public enum BoundUnaryOperatorKind
+{
+    Identity, // +a
+    Negation, // -a
+    LogicalNegation // !a 
+}
+
+public sealed class BoundUnaryOperator
+{
+    public Lexer.LexerTokenKind SyntaxKind { get; }
+    public BoundUnaryOperatorKind Kind { get; }
+    public TypeSymbol OperandType { get; }
+    public TypeSymbol ResultType { get; }
+
+    private BoundUnaryOperator(Lexer.LexerTokenKind syntaxKind, BoundUnaryOperatorKind kind, TypeSymbol operandType,
+        TypeSymbol resultType)
+    {
+        SyntaxKind = syntaxKind;
+        Kind = kind;
+        OperandType = operandType;
+        ResultType = resultType;
+    }
+
+    private BoundUnaryOperator(Lexer.LexerTokenKind syntaxKind, BoundUnaryOperatorKind kind, TypeSymbol operandType)
+        : this(syntaxKind, kind, operandType, operandType)
+    {
+    }
+
+    private static readonly Dictionary<Lexer.LexerTokenKind, BoundUnaryOperatorKind> SyntaxMap = new()
+    {
+        [Lexer.LexerTokenKind.Plus] = BoundUnaryOperatorKind.Identity,
+        [Lexer.LexerTokenKind.Minus] = BoundUnaryOperatorKind.Negation,
+    };
+
+
+    public static BoundUnaryOperatorKind? GetOperatorKind(Lexer.LexerTokenKind kind)
+        => SyntaxMap.TryGetValue(kind, out var k) ? k : null;
+
+
+    public static BoundUnaryOperator? Bind(BoundUnaryOperatorKind kind, TypeSymbol operandType)
+    {
+        if (operandType.IsNumeric)
+        {
+            switch (kind)
+            {
+                case BoundUnaryOperatorKind.Identity:
+                    return new(Lexer.LexerTokenKind.Plus, kind, operandType);
+                case BoundUnaryOperatorKind.Negation:
+                    return new(Lexer.LexerTokenKind.Minus, kind, operandType);
+            }
+        }
+
+        return null;
+    }
+}
+
 public enum BoundBinaryOperatorKind
 {
     Addition,
@@ -117,7 +173,8 @@ public sealed class BoundErrorNode(string error) : BoundNode
     public override TypeSymbol Type => TypeSymbol.Error;
 }
 
-public sealed class BoundVariableDeclarationStatement(BoundVariableExpression variable, BoundNode? initializer) : BoundNode
+public sealed class BoundVariableDeclarationStatement(BoundVariableExpression variable, BoundNode? initializer)
+    : BoundNode
 {
     public BoundVariableExpression Variable { get; } = variable;
     public BoundNode? Initializer { get; } = initializer;
@@ -130,6 +187,13 @@ public sealed class BoundAssignmentStatement(BoundVariableExpression variable, B
     public BoundNode Expression { get; } = expression;
 
     public override TypeSymbol Type => TypeSymbol.Void;
+}
+
+public sealed class BoundUnaryExpression(BoundUnaryOperator op, BoundNode operand) : BoundNode
+{
+    public BoundUnaryOperator Op { get; } = op;
+    public BoundNode Operand { get; } = operand;
+    public override TypeSymbol Type => Op.ResultType;
 }
 
 public sealed class BoundBinaryExpression(BoundNode left, BoundBinaryOperator op, BoundNode right) : BoundNode
