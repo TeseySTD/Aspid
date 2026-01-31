@@ -19,6 +19,7 @@ public class Binder
         {
             VariableDeclarationStatement declaration => BindVariableDeclarationStatement(declaration),
             AssignmentStatement assignment => BindAssignmentStatement(assignment),
+            IfStatement ifStatement => BindIfStatement(ifStatement),
             ExpressionStatement es => BindExpression(es.Expression),
             _ => throw new NotImplementedException($"Binding for {statement.Kind} not implemented yet.")
         };
@@ -82,6 +83,28 @@ public class Binder
         var variable = new BoundVariableExpression(name, expression.Type);
         return new BoundAssignmentStatement(variable, expression);
     }
+
+    private BoundNode BindIfStatement(IfStatement statement)
+    {
+        var condition = BindExpression(statement.ConditionExpression);
+
+        if (condition.Type != TypeSymbol.Bool)
+        {
+            var errText =
+                $"If statement has not a boolean condition at {statement.IfKeyword.End}, {statement.Colon.Start}.";
+            Diagnostics.Add(errText);
+            return new BoundErrorNode(errText);
+        }
+
+        var thenStatement = Bind(statement.ThenStatement);
+
+        BoundNode? elseStatement = statement.ElseStatement == null
+            ? null
+            : Bind(statement.ElseStatement);
+
+        return new BoundIfStatement(condition, thenStatement, elseStatement);
+    }
+
 
     private BoundNode BindExpression(Expression syntax)
     {

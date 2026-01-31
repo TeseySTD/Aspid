@@ -15,3 +15,16 @@ public sealed class BoundAssignmentStatement(BoundVariableExpression variable, B
 
     public override TypeSymbol Type => TypeSymbol.Void;
 }
+
+public sealed class BoundIfStatement(
+    BoundNode condition,
+    BoundNode thenStatement,
+    BoundNode? elseStatement
+) : BoundNode
+{
+    public BoundNode Condition { get; } = condition;
+    public BoundNode ThenStatement { get; } = thenStatement;
+    public BoundNode? ElseStatement { get; } = elseStatement;
+
+    public override TypeSymbol Type => TypeSymbol.Void;
+}

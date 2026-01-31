@@ -39,6 +39,8 @@ public static class Lexer
         // Keywords
         True,
         False,
+        If,
+        Else,
 
         // Terminal
         UndefinedToken,
@@ -163,6 +165,8 @@ public static class Lexer
         string value = text.Substring(start, position - start);
         var kind = value switch
         {
+            "if" => LexerTokenKind.If,
+            "else" => LexerTokenKind.Else,
             "true" => LexerTokenKind.True,
             "false" => LexerTokenKind.False,
             _ => LexerTokenKind.Id

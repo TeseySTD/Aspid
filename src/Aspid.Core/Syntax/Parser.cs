@@ -75,6 +75,11 @@ public class Parser(string text)
             return ParseAssignmentStatement();
         }
 
+        if (Current.Kind == Lexer.LexerTokenKind.If)
+        {
+            return ParseIfStatement();
+        }
+
         var expression = ParseExpression();
 
         return new ExpressionStatement(expression);
@@ -112,6 +117,26 @@ public class Parser(string text)
         return new AssignmentStatement(identifier, right);
     }
 
+    private Statement ParseIfStatement()
+    {
+        var ifKeyword = Match(Lexer.LexerTokenKind.If) ?? throw new Exception("Expected If keyword");
+        var condition = ParseExpression();
+        var colon = Match(Lexer.LexerTokenKind.Colon) ?? throw new Exception("Expected Colon after condition.");
+        var thenStatement = ParseStatement();
+        Statement? elseStatement = null;
+
+        if (Current.Kind == Lexer.LexerTokenKind.Else)
+        {
+            NextToken(); 
+            
+            if (Current.Kind == Lexer.LexerTokenKind.Colon)
+                NextToken();
+
+            elseStatement = ParseStatement();
+        }
+
+        return new IfStatement(ifKeyword, colon, condition, thenStatement, elseStatement);
+    }
 
     private Expression ParseExpression()
     {

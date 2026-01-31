@@ -131,6 +131,24 @@ public sealed record VariableDeclarationStatement(
     }
 }
 
+public sealed record IfStatement(
+    Lexer.Token IfKeyword,
+    Lexer.Token Colon,
+    Expression ConditionExpression,
+    Statement ThenStatement,
+    Statement? ElseStatement) : Statement
+{
+    public override string Kind => nameof(IfStatement);
+
+    public override IEnumerable<SyntaxNode> GetChildren()
+    {
+        yield return ConditionExpression;
+        yield return ThenStatement;
+        if(ElseStatement != null)
+            yield return ElseStatement;
+    }
+}
+
 public sealed record ParenthesizedExpression(
     Lexer.Token OpenParenToken,
     Expression Expression,

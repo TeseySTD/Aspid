@@ -18,6 +18,7 @@ public class Evaluator
             // Statements
             BoundVariableDeclarationStatement v => EvaluateVariableDeclaration(v),
             BoundAssignmentStatement a => EvaluateAssignment(a),
+            BoundIfStatement ifStatement => EvaluateIfStatement(ifStatement),
 
             // Expressions
             BoundLiteralExpression l => l.Value,
@@ -54,6 +55,23 @@ public class Evaluator
         return value;
     }
 
+    private object? EvaluateIfStatement(BoundIfStatement node)
+    {
+        var condition = (bool?)(Evaluate(node.Condition) ?? null);
+
+        if (condition is true)
+        {
+            return Evaluate(node.ThenStatement);
+        }
+        if (node.ElseStatement != null)
+        {
+            return Evaluate(node.ElseStatement);
+        }
+
+        return null;
+    }
+
+
     private object EvaluateConversion(BoundConversionExpression node)
     {
         var value = Evaluate(node.Expression);
@@ -82,17 +100,16 @@ public class Evaluator
         if (node.Op.Kind != BoundUnaryOperatorKind.PreIncrement && node.Op.Kind != BoundUnaryOperatorKind.PreDecrement)
             operand = Evaluate(node.Operand) ??
                       throw new Exception($"Unexpected node {node.Operand.Type} in unary expression.");
-        var operandVar = (BoundVariableExpression)node.Operand;
 
         return node.Op.Kind switch
         {
             BoundUnaryOperatorKind.Identity => operand,
             BoundUnaryOperatorKind.Negation => EvaluateNegation(node, operand),
             BoundUnaryOperatorKind.LogicalNegation => EvaluateLogicalNegation(node, operand),
-            BoundUnaryOperatorKind.PostIncrement => ChangeValue(operandVar, 1, false),
-            BoundUnaryOperatorKind.PostDecrement => ChangeValue(operandVar, -1, false),
-            BoundUnaryOperatorKind.PreIncrement => ChangeValue(operandVar, 1, true),
-            BoundUnaryOperatorKind.PreDecrement => ChangeValue(operandVar, -1, true),
+            BoundUnaryOperatorKind.PostIncrement => ChangeValue((BoundVariableExpression)node.Operand, 1, false),
+            BoundUnaryOperatorKind.PostDecrement => ChangeValue((BoundVariableExpression)node.Operand, -1, false),
+            BoundUnaryOperatorKind.PreIncrement => ChangeValue((BoundVariableExpression)node.Operand, 1, true),
+            BoundUnaryOperatorKind.PreDecrement => ChangeValue((BoundVariableExpression)node.Operand, -1, true),
             _ => throw new Exception($"Unexpected unary operator {node.Op.Kind}")
         };
     }
