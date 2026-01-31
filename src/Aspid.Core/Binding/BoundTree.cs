@@ -98,6 +98,7 @@ public enum BoundBinaryOperatorKind
     Multiplication,
     Division,
     Equals,
+    NotEquals,
 }
 
 public sealed record BoundBinaryOperator
@@ -123,6 +124,7 @@ public sealed record BoundBinaryOperator
         [Lexer.LexerTokenKind.Star] = BoundBinaryOperatorKind.Multiplication,
         [Lexer.LexerTokenKind.Div] = BoundBinaryOperatorKind.Division,
         [Lexer.LexerTokenKind.EqEq] = BoundBinaryOperatorKind.Equals,
+        [Lexer.LexerTokenKind.NotEq] = BoundBinaryOperatorKind.NotEquals
     };
 
     public static BoundBinaryOperatorKind? GetOperatorKind(Lexer.LexerTokenKind kind)
@@ -130,32 +132,28 @@ public sealed record BoundBinaryOperator
 
     public static BoundBinaryOperator? Bind(BoundBinaryOperatorKind kind, TypeSymbol left, TypeSymbol right)
     {
-        if (kind == BoundBinaryOperatorKind.Addition && (left.IsString || right.IsString))
+        if (kind == BoundBinaryOperatorKind.Equals || kind == BoundBinaryOperatorKind.NotEquals)
         {
-            return new BoundBinaryOperator(kind, left, right, TypeSymbol.String);
+            if (left == right)
+                return new BoundBinaryOperator(kind, left, right, TypeSymbol.Bool);
+            if (left.IsNumeric && right.IsNumeric) // Numeric types can be comparable
+                return new BoundBinaryOperator(kind, left, right, TypeSymbol.Bool);
         }
-
+        
+        // Round to double for numeric operations
         if (left.IsNumeric && right.IsNumeric)
         {
             var resultType = (left == TypeSymbol.Double || right == TypeSymbol.Double)
                 ? TypeSymbol.Double
                 : TypeSymbol.Int;
 
-            if (kind == BoundBinaryOperatorKind.Equals)
-                return new BoundBinaryOperator(kind, left, right, TypeSymbol.Bool);
-
             return new BoundBinaryOperator(kind, left, right, resultType);
         }
 
-        if (left.IsBoolean && right.IsBoolean)
+        // String concatenation
+        if (kind == BoundBinaryOperatorKind.Addition && (left.IsString || right.IsString))
         {
-            if (kind == BoundBinaryOperatorKind.Equals)
-                return new BoundBinaryOperator(kind, left, right, TypeSymbol.Bool);
-        }
-
-        if (kind == BoundBinaryOperatorKind.Equals && left == right)
-        {
-            return new BoundBinaryOperator(kind, left, right, TypeSymbol.Bool);
+            return new BoundBinaryOperator(kind, left, right, TypeSymbol.String);
         }
 
         return null;

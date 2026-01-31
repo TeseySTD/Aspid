@@ -31,8 +31,9 @@ public class Parser(string text)
     {
         return kind switch
         {
-            Lexer.LexerTokenKind.Star or Lexer.LexerTokenKind.Div => 2,
-            Lexer.LexerTokenKind.Plus or Lexer.LexerTokenKind.Minus => 1,
+            Lexer.LexerTokenKind.Star or Lexer.LexerTokenKind.Div => 3,
+            Lexer.LexerTokenKind.Plus or Lexer.LexerTokenKind.Minus => 2,
+            Lexer.LexerTokenKind.EqEq or Lexer.LexerTokenKind.NotEq => 1,
             _ => 0
         };
     }

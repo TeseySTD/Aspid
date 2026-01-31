@@ -114,6 +114,7 @@ public class Evaluator
             BoundBinaryOperatorKind.Multiplication => EvaluateMultiplication(node, left, right),
             BoundBinaryOperatorKind.Division => EvaluateDivision(node, left, right),
             BoundBinaryOperatorKind.Equals => EvaluateEquals(left, right),
+            BoundBinaryOperatorKind.NotEquals => !EvaluateEquals(left, right),
             _ => throw new Exception($"Unexpected binary operator {node.Op.Kind}")
         };
     }
@@ -157,7 +158,7 @@ public class Evaluator
         return Convert.ToInt32(left) / Convert.ToInt32(right);
     }
 
-    private object EvaluateEquals(object left, object right)
+    private bool EvaluateEquals(object left, object right)
     {
         if (IsNumeric(left) && IsNumeric(right))
         {
