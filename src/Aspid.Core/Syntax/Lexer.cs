@@ -26,12 +26,15 @@ public static class Lexer
         OBracket,
         CBracket,
         Comma,
+        Not,
 
         // Puncts (Compound)
         EqEq,
         NotEq,
         PlusEq,
         MinusEq,
+        PlusPlus,
+        MinusMinus,
 
         // Keywords
         True,
@@ -48,6 +51,8 @@ public static class Lexer
         ("!=", LexerTokenKind.NotEq),
         ("+=", LexerTokenKind.PlusEq),
         ("-=", LexerTokenKind.MinusEq),
+        ("++", LexerTokenKind.PlusPlus),
+        ("--", LexerTokenKind.MinusMinus),
         ("=", LexerTokenKind.Eq),
         ("+", LexerTokenKind.Plus),
         ("-", LexerTokenKind.Minus),
@@ -58,7 +63,8 @@ public static class Lexer
         ("[", LexerTokenKind.OBracket),
         ("]", LexerTokenKind.CBracket),
         (":", LexerTokenKind.Colon),
-        (",", LexerTokenKind.Comma)
+        (",", LexerTokenKind.Comma),
+        ("!", LexerTokenKind.Not)
     };
 
     private static readonly (string Text, LexerTokenKind Kind)[] SortedOperators;

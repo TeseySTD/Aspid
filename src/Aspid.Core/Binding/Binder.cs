@@ -92,6 +92,7 @@ public class Binder
             NumberExpression n => BindNumberExpression(n),
             StringExpression str => BindStringExpression(str),
             UnaryExpression un => BindUnaryExpression(un),
+            PostfixUnaryExpression pstfun => BindPostfixUnaryExpression(pstfun),
             BinaryExpression b => BindBinaryExpression(b),
             VariableExpression v => BindVariableExpression(v),
             _ => throw new Exception($"Unexpected syntax {syntax.Kind}")
@@ -158,7 +159,7 @@ public class Binder
         if (boundOperand.Type == TypeSymbol.Error)
             return new BoundErrorNode(""); // Replace recursion
 
-        var operatorKind = BoundUnaryOperator.GetOperatorKind(syntax.OperatorToken.Kind);
+        var operatorKind = BoundUnaryOperator.GetPrefixOperatorKind(syntax.OperatorToken.Kind);
         if (operatorKind is null)
         {
             var errText = $"Unary operator '{syntax.OperatorToken.Text}' is not supported.";
@@ -171,6 +172,33 @@ public class Binder
         {
             var message =
                 $"Unary operator '{syntax.OperatorToken.Text}' is not defined for type '{boundOperand.Type}'.";
+            Diagnostics.Add(message);
+            return new BoundErrorNode(message);
+        }
+
+        return new BoundUnaryExpression(boundOperator, boundOperand);
+    }
+
+    private BoundNode BindPostfixUnaryExpression(PostfixUnaryExpression syntax)
+    {
+        var boundOperand = BindExpression(syntax.Operand);
+
+        if (boundOperand.Type == TypeSymbol.Error)
+            return new BoundErrorNode(""); // Replace recursion
+
+        var operatorKind = BoundUnaryOperator.GetPostfixOperatorKind(syntax.OperatorToken.Kind);
+        if (operatorKind is null)
+        {
+            var errText = $"Postfix unary operator '{syntax.OperatorToken.Text}' is not supported.";
+            Diagnostics.Add(errText);
+            return new BoundErrorNode(errText);
+        }
+
+        var boundOperator = BoundUnaryOperator.Bind(operatorKind.Value, boundOperand.Type);
+        if (boundOperator == null)
+        {
+            var message =
+                $"Postfix unary operator '{syntax.OperatorToken.Text}' is not defined for type '{boundOperand.Type}'.";
             Diagnostics.Add(message);
             return new BoundErrorNode(message);
         }

@@ -82,6 +82,16 @@ public sealed record UnaryExpression(Lexer.Token OperatorToken, Expression Opera
     }
 }
 
+public sealed record PostfixUnaryExpression(Lexer.Token OperatorToken, Expression Operand) : Expression
+{
+    public override string Kind => nameof(UnaryExpression);
+
+    public override IEnumerable<SyntaxNode> GetChildren()
+    {
+        yield return Operand;
+    }
+}
+
 public sealed record CallExpression(Expression Function, List<Expression> Arguments) : Expression
 {
     public override string Kind => nameof(CallExpression);

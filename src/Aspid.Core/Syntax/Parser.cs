@@ -139,15 +139,42 @@ public class Parser(string text)
     private Expression ParseUnaryExpression()
     {
         if (Current.Kind == Lexer.LexerTokenKind.Plus ||
-            Current.Kind == Lexer.LexerTokenKind.Minus)
+            Current.Kind == Lexer.LexerTokenKind.Minus ||
+            Current.Kind == Lexer.LexerTokenKind.Not ||
+            Current.Kind == Lexer.LexerTokenKind.PlusPlus ||
+            Current.Kind == Lexer.LexerTokenKind.MinusMinus)
         {
             var operatorToken = NextToken();
             var operand = ParseUnaryExpression();
+            var isIncrementOrDecrement = operatorToken.Kind == Lexer.LexerTokenKind.PlusPlus ||
+                                         operatorToken.Kind == Lexer.LexerTokenKind.MinusMinus;
+            if (isIncrementOrDecrement && operand is not VariableExpression)
+                throw new Exception("Variable must be after increment or decrement.");
 
             return new UnaryExpression(operatorToken, operand);
         }
 
-        return ParsePrimary();
+        return ParsePostfixExpression();
+    }
+
+    private Expression ParsePostfixExpression()
+    {
+        var expression = ParsePrimary();
+
+        if (Current.Kind == Lexer.LexerTokenKind.PlusPlus ||
+            Current.Kind == Lexer.LexerTokenKind.MinusMinus)
+        {
+            var operatorToken = NextToken();
+
+            var isIncrementOrDecrement = operatorToken.Kind == Lexer.LexerTokenKind.PlusPlus ||
+                                         operatorToken.Kind == Lexer.LexerTokenKind.MinusMinus;
+            if (isIncrementOrDecrement && expression is not VariableExpression)
+                throw new Exception("Variable must be after increment or decrement.");
+
+            return new PostfixUnaryExpression(operatorToken, expression);
+        }
+
+        return expression;
     }
 
     private Expression ParsePrimary()

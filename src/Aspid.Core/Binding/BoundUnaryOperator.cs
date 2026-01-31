@@ -1,4 +1,5 @@
 ﻿using Aspid.Core.Syntax;
+using static Aspid.Core.Binding.BoundUnaryOperatorKind;
 
 namespace Aspid.Core.Binding;
 
@@ -6,7 +7,11 @@ public enum BoundUnaryOperatorKind
 {
     Identity, // +a
     Negation, // -a
-    LogicalNegation // !a 
+    LogicalNegation, // !a 
+    PreIncrement, // ++a
+    PreDecrement, // --a
+    PostIncrement, // a++
+    PostDecrement, // a--
 }
 
 public sealed class BoundUnaryOperator
@@ -30,30 +35,40 @@ public sealed class BoundUnaryOperator
     {
     }
 
-    private static readonly Dictionary<Lexer.LexerTokenKind, BoundUnaryOperatorKind> SyntaxMap = new()
+    private static readonly Dictionary<Lexer.LexerTokenKind, BoundUnaryOperatorKind> PrefixSyntaxMap = new()
     {
-        [Lexer.LexerTokenKind.Plus] = BoundUnaryOperatorKind.Identity,
-        [Lexer.LexerTokenKind.Minus] = BoundUnaryOperatorKind.Negation,
+        [Lexer.LexerTokenKind.Plus] = Identity,
+        [Lexer.LexerTokenKind.Minus] = Negation,
+        [Lexer.LexerTokenKind.Not] = LogicalNegation,
+        [Lexer.LexerTokenKind.PlusPlus] = PreIncrement,
+        [Lexer.LexerTokenKind.MinusMinus] = PreDecrement,
     };
 
+    private static readonly Dictionary<Lexer.LexerTokenKind, BoundUnaryOperatorKind> PostfixSyntaxMap = new()
+    {
+        [Lexer.LexerTokenKind.PlusPlus] = PostIncrement,
+        [Lexer.LexerTokenKind.MinusMinus] = PostDecrement,
+    };
 
-    public static BoundUnaryOperatorKind? GetOperatorKind(Lexer.LexerTokenKind kind)
-        => SyntaxMap.TryGetValue(kind, out var k) ? k : null;
+    public static BoundUnaryOperatorKind? GetPrefixOperatorKind(Lexer.LexerTokenKind kind)
+        => PrefixSyntaxMap.TryGetValue(kind, out var k) ? k : null;
+
+    public static BoundUnaryOperatorKind? GetPostfixOperatorKind(Lexer.LexerTokenKind kind)
+        => PostfixSyntaxMap.TryGetValue(kind, out var k) ? k : null;
 
 
     public static BoundUnaryOperator? Bind(BoundUnaryOperatorKind kind, TypeSymbol operandType)
     {
-        if (operandType.IsNumeric)
+        return kind switch
         {
-            switch (kind)
-            {
-                case BoundUnaryOperatorKind.Identity:
-                    return new(Lexer.LexerTokenKind.Plus, kind, operandType);
-                case BoundUnaryOperatorKind.Negation:
-                    return new(Lexer.LexerTokenKind.Minus, kind, operandType);
-            }
-        }
-
-        return null;
+            Identity when operandType.IsNumeric => new(Lexer.LexerTokenKind.Plus, kind, operandType),
+            Negation when operandType.IsNumeric => new(Lexer.LexerTokenKind.Minus, kind, operandType),
+            PreIncrement when operandType.IsNumeric => new(Lexer.LexerTokenKind.PlusPlus, kind, operandType),
+            PostIncrement when operandType.IsNumeric => new(Lexer.LexerTokenKind.PlusPlus, kind, operandType),
+            PreDecrement when operandType.IsNumeric => new(Lexer.LexerTokenKind.MinusMinus, kind, operandType),
+            PostDecrement when operandType.IsNumeric => new(Lexer.LexerTokenKind.MinusMinus, kind, operandType),
+            LogicalNegation when operandType.IsBoolean => new(Lexer.LexerTokenKind.Not, kind, operandType),
+            _ => null
+        };
     }
 }

@@ -78,13 +78,21 @@ public class Evaluator
 
     private object EvaluateUnaryExpression(BoundUnaryExpression node)
     {
-        var operand = Evaluate(node.Operand) ??
+        object operand = node.Operand;
+        if (node.Op.Kind != BoundUnaryOperatorKind.PreIncrement && node.Op.Kind != BoundUnaryOperatorKind.PreDecrement)
+            operand = Evaluate(node.Operand) ??
                       throw new Exception($"Unexpected node {node.Operand.Type} in unary expression.");
+        var operandVar = (BoundVariableExpression)node.Operand;
 
         return node.Op.Kind switch
         {
             BoundUnaryOperatorKind.Identity => operand,
             BoundUnaryOperatorKind.Negation => EvaluateNegation(node, operand),
+            BoundUnaryOperatorKind.LogicalNegation => EvaluateLogicalNegation(node, operand),
+            BoundUnaryOperatorKind.PostIncrement => ChangeValue(operandVar, 1, false),
+            BoundUnaryOperatorKind.PostDecrement => ChangeValue(operandVar, -1, false),
+            BoundUnaryOperatorKind.PreIncrement => ChangeValue(operandVar, 1, true),
+            BoundUnaryOperatorKind.PreDecrement => ChangeValue(operandVar, -1, true),
             _ => throw new Exception($"Unexpected unary operator {node.Op.Kind}")
         };
     }
@@ -98,6 +106,34 @@ public class Evaluator
             return -(int)operand;
 
         throw new Exception($"Unexpected type {node.Type} for negation");
+    }
+
+    private object ChangeValue(BoundVariableExpression v, object amount, bool returnNew)
+    {
+        if (v.Type == TypeSymbol.Int)
+        {
+            var oldVal = (int)_variables[v.Name];
+            var newVal = oldVal + (int)amount;
+            _variables[v.Name] = newVal;
+            return returnNew ? newVal : oldVal;
+        }
+
+        if (v.Type == TypeSymbol.Double)
+        {
+            var oldVal = (double)_variables[v.Name];
+            var newVal = oldVal + (double)amount;
+            _variables[v.Name] = newVal;
+            return returnNew ? newVal : oldVal;
+        }
+
+        throw new InvalidOperationException();
+    }
+
+    private bool EvaluateLogicalNegation(BoundUnaryExpression node, object operand)
+    {
+        if (!node.Type.IsBoolean)
+            throw new Exception($"Non-boolean type in unary operator {node.Op.Kind} is not supported");
+        return !(bool)operand;
     }
 
     private object EvaluateBinaryExpression(BoundBinaryExpression node)
