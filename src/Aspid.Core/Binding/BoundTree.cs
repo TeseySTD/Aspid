@@ -219,6 +219,12 @@ public sealed class BoundLiteralExpression(object value) : BoundNode
     };
 }
 
+public sealed class BoundConversionExpression(TypeSymbol type, BoundNode expression) : BoundNode
+{
+    public override TypeSymbol Type { get; } = type;
+    public BoundNode Expression { get; } = expression;
+}
+
 public sealed class BoundVariableExpression(string name, TypeSymbol type) : BoundNode
 {
     public string Name { get; } = name;

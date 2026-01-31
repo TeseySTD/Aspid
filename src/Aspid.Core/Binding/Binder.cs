@@ -62,12 +62,17 @@ public class Binder
 
         if (_variables.TryGetValue(name, out var existingType))
         {
-            if (existingType != expression.Type)
+            var convertedExpression = BindConversion(expression, existingType);
+
+            if (existingType != convertedExpression.Type)
             {
-                var errText = $"Cannot assign type '{expression.Type}' to variable '{name}' of type '{existingType}'.";
+                var errText =
+                    $"Cannot assign type '{convertedExpression.Type}' to variable '{name}' of type '{existingType}'.";
                 Diagnostics.Add(errText);
                 return new BoundErrorNode(errText);
             }
+
+            expression = convertedExpression;
         }
         else
         {
@@ -83,6 +88,7 @@ public class Binder
         return syntax switch
         {
             ParenthesizedExpression p => BindExpression(p.Expression),
+            BooleanExpression b => new BoundLiteralExpression(b.Value),
             NumberExpression n => BindNumberExpression(n),
             StringExpression str => BindStringExpression(str),
             UnaryExpression un => BindUnaryExpression(un),
@@ -193,6 +199,23 @@ public class Binder
         return new BoundBinaryExpression(boundLeft, op, boundRight);
     }
 
+    private BoundNode BindConversion(BoundNode expression, TypeSymbol targetType)
+    {
+        if (expression.Type == targetType)
+            return expression;
+
+        if (expression.Type.IsNumeric && targetType == TypeSymbol.Bool)
+        {
+            return new BoundConversionExpression(TypeSymbol.Bool, expression);
+        }
+
+        if (expression.Type == TypeSymbol.Int && targetType == TypeSymbol.Double)
+        {
+            return new BoundConversionExpression(TypeSymbol.Double, expression);
+        }
+
+        return expression;
+    }
 
     public static void PrettyPrint(BoundNode node, string indent = "", bool isFirst = false, bool isLast = true)
     {

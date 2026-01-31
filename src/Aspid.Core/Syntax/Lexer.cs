@@ -33,6 +33,10 @@ public static class Lexer
         PlusEq,
         MinusEq,
 
+        // Keywords
+        True,
+        False,
+
         // Terminal
         UndefinedToken,
         EndOfFile
@@ -151,7 +155,14 @@ public static class Lexer
         }
 
         string value = text.Substring(start, position - start);
-        return new Token(value, LexerTokenKind.Id, start, position);
+        var kind = value switch
+        {
+            "true" => LexerTokenKind.True,
+            "false" => LexerTokenKind.False,
+            _ => LexerTokenKind.Id
+        };
+
+        return new Token(value, kind, start, position);
     }
 
 
@@ -225,7 +236,7 @@ public static class Lexer
     {
         List<Token> resultTokens =
         [
-            new ("(", LexerTokenKind.OParen, start, start + 1) // Virtual '('
+            new("(", LexerTokenKind.OParen, start, start + 1) // Virtual '('
         ];
 
         position += 2; // Skip f"
@@ -303,7 +314,7 @@ public static class Lexer
                 }
 
 
-                chunkStart = position + 1; 
+                chunkStart = position + 1;
             }
 
             position++;

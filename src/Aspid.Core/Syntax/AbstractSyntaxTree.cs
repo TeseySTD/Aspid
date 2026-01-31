@@ -40,6 +40,16 @@ public sealed record StringExpression(Lexer.Token StringToken) : Expression
     }
 }
 
+public sealed record BooleanExpression(Lexer.Token KeywordToken, bool Value) : Expression
+{
+    public override string Kind => nameof(BooleanExpression);
+
+    public override IEnumerable<SyntaxNode> GetChildren()
+    {
+        yield break;
+    }
+}
+
 public sealed record VariableExpression(Lexer.Token VariableName) : Expression
 {
     public override string Kind => nameof(VariableExpression);

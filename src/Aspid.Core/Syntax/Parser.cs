@@ -141,7 +141,7 @@ public class Parser(string text)
             Current.Kind == Lexer.LexerTokenKind.Minus)
         {
             var operatorToken = NextToken();
-            var operand = ParseUnaryExpression(); 
+            var operand = ParseUnaryExpression();
 
             return new UnaryExpression(operatorToken, operand);
         }
@@ -166,6 +166,10 @@ public class Parser(string text)
     {
         switch (Current.Kind)
         {
+            case Lexer.LexerTokenKind.True:
+                return new BooleanExpression(NextToken(), true);
+            case Lexer.LexerTokenKind.False:
+                return new BooleanExpression(NextToken(), false);
             case Lexer.LexerTokenKind.OParen:
                 var left = NextToken();
                 var expression = ParseExpression();
@@ -230,6 +234,10 @@ public class Parser(string text)
             case VariableExpression variableExpression:
                 Console.Write(" ");
                 Console.Write(variableExpression.VariableName.Text);
+                break;
+            case BooleanExpression b:
+                Console.Write(" ");
+                Console.Write(b.Value.ToString().ToLower());
                 break;
         }
 
