@@ -56,7 +56,9 @@ public class Binder
 
         var variable = new BoundVariableExpression(name, type);
 
-        if (initializer != null && initializer.Type != type)
+        if (initializer != null &&
+            initializer.Type != TypeSymbol.Any && type != TypeSymbol.Any &&
+            initializer.Type != type)
         {
             var assignWrongTypeError =
                 $"Variable '{name}' with type {type.Name} cannot be assigned to type '{initializer.Type.Name}'.";
@@ -78,21 +80,24 @@ public class Binder
         var expression = BindExpression(assignment.Expression);
         if (_scope.TryLookup(name, out var existingType))
         {
-            var convertedExpression = BindConversion(expression, existingType);
-
-            if (existingType != convertedExpression.Type)
+            if (existingType != TypeSymbol.Any)
             {
-                var errText =
-                    $"Cannot assign type '{convertedExpression.Type}' to variable '{name}' of type '{existingType}'.";
-                Diagnostics.Add(errText);
-                return new BoundErrorNode(errText);
-            }
+                var convertedExpression = BindConversion(expression, existingType);
 
-            expression = convertedExpression;
+                if (existingType != convertedExpression.Type)
+                {
+                    var errText =
+                        $"Cannot assign type '{convertedExpression.Type}' to variable '{name}' of type '{existingType}'.";
+                    Diagnostics.Add(errText);
+                    return new BoundErrorNode(errText);
+                }
+
+                expression = convertedExpression;
+            }
         }
         else
         {
-            _scope.TryDeclare(name, expression.Type);
+            _scope.TryDeclare(name, TypeSymbol.Any);
         }
 
         var variable = new BoundVariableExpression(name, expression.Type);
@@ -147,7 +152,11 @@ public class Binder
             if (builtin != null)
             {
                 var boundArgs = syntax.Arguments.Select(BindExpression).ToList();
-                if (builtin.Parameters.Any(p => p.Type != boundArgs[builtin.Parameters.IndexOf(p)].Type))
+                if (builtin.Parameters.Any(p =>
+                        p.Type != TypeSymbol.Any &&
+                        boundArgs[builtin.Parameters.IndexOf(p)].Type != TypeSymbol.Any &&
+                        p.Type != boundArgs[builtin.Parameters.IndexOf(p)].Type
+                    ))
                 {
                     var errText =
                         $"Invalid args for function {name}: {string.Join(", ", boundArgs.Select(p => p.ToString()))}";
@@ -299,6 +308,12 @@ public class Binder
         if (expression.Type == targetType)
             return expression;
 
+        if (expression.Type == TypeSymbol.Any)
+            return new BoundConversionExpression(targetType, expression);
+
+        if (targetType == TypeSymbol.Any)
+            return new BoundConversionExpression(targetType, expression);
+
         if (expression.Type.IsNumeric && targetType == TypeSymbol.Bool)
         {
             return new BoundConversionExpression(TypeSymbol.Bool, expression);
@@ -335,7 +350,8 @@ public class Binder
             case BoundIfStatement ifStatement:
                 PrettyPrint(ifStatement.Condition, indent, isFirst: false, isLast: false, optionalLabel: "Condition: ");
                 var isElseStatement = ifStatement.ElseStatement != null;
-                PrettyPrint(ifStatement.ThenStatement, indent, isLast: !isElseStatement, optionalLabel: "Then Statement: ");
+                PrettyPrint(ifStatement.ThenStatement, indent, isLast: !isElseStatement,
+                    optionalLabel: "Then Statement: ");
                 if (isElseStatement)
                     PrettyPrint(ifStatement.ElseStatement!, indent, isLast: true, optionalLabel: "Else Statement: ");
                 break;

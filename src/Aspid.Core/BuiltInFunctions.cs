@@ -8,7 +8,7 @@ public static class BuiltInFunctions
 
     public static readonly FunctionSymbol Print = new(
         "print",
-        [new("str", TypeSymbol.String)],
+        [new("str", TypeSymbol.Any)],
         TypeSymbol.Void
     );
 

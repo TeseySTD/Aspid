@@ -49,7 +49,12 @@ public sealed record BoundBinaryOperator
                 return new BoundBinaryOperator(kind, left, right, TypeSymbol.Bool);
             if (left.IsNumeric && right.IsNumeric) // Numeric types can be comparable
                 return new BoundBinaryOperator(kind, left, right, TypeSymbol.Bool);
+            if (left == TypeSymbol.Any || right == TypeSymbol.Any) // Allow to compare with any
+                return new BoundBinaryOperator(kind, left, right, TypeSymbol.Bool); 
         }
+
+        if (left == TypeSymbol.Any || right == TypeSymbol.Any)
+            return new BoundBinaryOperator(kind, left, right, TypeSymbol.Any);
 
         // Round to double for numeric operations
         if (left.IsNumeric && right.IsNumeric)

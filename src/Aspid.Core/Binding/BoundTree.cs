@@ -17,6 +17,7 @@ public sealed class TypeSymbol
     public static readonly TypeSymbol Bool = new("bool");
     public static readonly TypeSymbol String = new("string");
     public static readonly TypeSymbol Void = new("void");
+    public static readonly TypeSymbol Any = new("any");
     public static readonly TypeSymbol Error = new("!error!");
     public bool IsNumeric => this == Int || this == Double;
     public bool IsBoolean => this == Bool;
@@ -29,6 +30,7 @@ public sealed class TypeSymbol
         "bool" => Bool,
         "string" => String,
         "void" => Void,
+        "any" => Any,
         _ => null
     };
 }

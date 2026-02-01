@@ -82,12 +82,10 @@ public class Evaluator
 
     private object? EvaluateVariableDeclaration(BoundVariableDeclarationStatement node)
     {
-        var value = node.Initializer != null ? Evaluate(node.Initializer) : null;
+        var value = node.Initializer != null ? Evaluate(node.Initializer) : 0; // Set empty value to declared-only var
 
         if (value == null)
-        {
             return null;
-        }
 
         DeclareVariable(node.Variable.Name, value);
 
@@ -125,15 +123,12 @@ public class Evaluator
     {
         var value = Evaluate(node.Expression);
 
+        if (node.Type == TypeSymbol.Any && value != null)
+            return value;
         if (node.Type == TypeSymbol.Bool)
-        {
             return Convert.ToBoolean(value);
-        }
-
         if (node.Type == TypeSymbol.Double)
-        {
             return Convert.ToDouble(value);
-        }
 
         throw new Exception($"Unexpected conversion to {node.Type}");
     }
@@ -145,7 +140,7 @@ public class Evaluator
 
     private object? EvaluateCallExpression(BoundCallExpression node)
     {
-        var args = node.Arguments.Select(Evaluate).ToArray(); 
+        var args = node.Arguments.Select(Evaluate).ToArray();
 
         if (BuiltInFunctions.Implementations.TryGetValue(node.Function, out var implementation))
         {
@@ -182,6 +177,15 @@ public class Evaluator
 
         if (node.Type == TypeSymbol.Int)
             return -(int)operand;
+
+        if (node.Type == TypeSymbol.Any)
+        {
+            if (operand is double d)
+                return -d;
+            if (operand is int i)
+                return -i;
+            throw new Exception($"Unexpected - unary operator with any type");
+        }
 
         throw new Exception($"Unexpected type {node.Type} for negation");
     }
@@ -235,41 +239,68 @@ public class Evaluator
 
     private object EvaluateAddition(BoundBinaryExpression node, object left, object right)
     {
-        if (node.Type == TypeSymbol.String)
+        if (node.Type == TypeSymbol.String) return Convert.ToString(left) + Convert.ToString(right);
+        if (node.Type == TypeSymbol.Double) return Convert.ToDouble(left) + Convert.ToDouble(right);
+        if (node.Type == TypeSymbol.Int) return Convert.ToInt32(left) + Convert.ToInt32(right);
+
+        if (node.Type == TypeSymbol.Any)
         {
-            return Convert.ToString(left) + Convert.ToString(right);
+            if (left is string || right is string)
+                return Convert.ToString(left) + Convert.ToString(right);
+
+            if (left is double || right is double)
+                return Convert.ToDouble(left) + Convert.ToDouble(right);
+
+            return Convert.ToInt32(left) + Convert.ToInt32(right);
         }
 
-        if (node.Type == TypeSymbol.Double)
-        {
-            return Convert.ToDouble(left) + Convert.ToDouble(right);
-        }
-
-        return Convert.ToInt32(left) + Convert.ToInt32(right);
+        throw new Exception($"Unexpected types for addition: {left.GetType()} and {right.GetType()}");
     }
+
 
     private object EvaluateSubtraction(BoundBinaryExpression node, object left, object right)
     {
-        if (node.Type == TypeSymbol.Double)
-            return Convert.ToDouble(left) - Convert.ToDouble(right);
+        if (node.Type == TypeSymbol.Double) return Convert.ToDouble(left) - Convert.ToDouble(right);
+        if (node.Type == TypeSymbol.Int) return Convert.ToInt32(left) - Convert.ToInt32(right);
+        if (node.Type == TypeSymbol.Any)
+        {
+            if (left is double || right is double)
+                return Convert.ToDouble(left) - Convert.ToDouble(right);
 
-        return Convert.ToInt32(left) - Convert.ToInt32(right);
+            return Convert.ToInt32(left) - Convert.ToInt32(right);
+        }
+
+        throw new Exception($"Unexpected types for subtraction: {left.GetType()} and {right.GetType()}");
     }
 
     private object EvaluateMultiplication(BoundBinaryExpression node, object left, object right)
     {
-        if (node.Type == TypeSymbol.Double)
-            return Convert.ToDouble(left) * Convert.ToDouble(right);
+        if (node.Type == TypeSymbol.Double) return Convert.ToDouble(left) * Convert.ToDouble(right);
+        if (node.Type == TypeSymbol.Int) return Convert.ToInt32(left) * Convert.ToInt32(right);
+        if (node.Type == TypeSymbol.Any)
+        {
+            if (left is double || right is double)
+                return Convert.ToDouble(left) * Convert.ToDouble(right);
 
-        return Convert.ToInt32(left) * Convert.ToInt32(right);
+            return Convert.ToInt32(left) * Convert.ToInt32(right);
+        }
+
+        throw new Exception($"Unexpected types for multiplication: {left.GetType()} and {right.GetType()}");
     }
 
     private object EvaluateDivision(BoundBinaryExpression node, object left, object right)
     {
-        if (node.Type == TypeSymbol.Double)
-            return Convert.ToDouble(left) / Convert.ToDouble(right);
+        if (node.Type == TypeSymbol.Double) return Convert.ToDouble(left) / Convert.ToDouble(right);
+        if (node.Type == TypeSymbol.Int) return Convert.ToInt32(left) / Convert.ToInt32(right);
+        if (node.Type == TypeSymbol.Any)
+        {
+            if (left is double || right is double)
+                return Convert.ToDouble(left) / Convert.ToDouble(right);
 
-        return Convert.ToInt32(left) / Convert.ToInt32(right);
+            return Convert.ToInt32(left) / Convert.ToInt32(right);
+        }
+
+        throw new Exception($"Unexpected types for division: {left.GetType()} and {right.GetType()}");
     }
 
     private bool EvaluateEquals(object left, object right)
