@@ -134,11 +134,8 @@ public class Parser(string text)
     private Statement ParseAssignmentStatement()
     {
         var identifier = Match(Lexer.LexerTokenKind.Id) ?? throw new Exception("Expected Id");
-
         Match(Lexer.LexerTokenKind.Eq);
-
         var right = ParseExpression();
-
         return new AssignmentStatement(identifier, right);
     }
 
@@ -204,7 +201,7 @@ public class Parser(string text)
             var isIncrementOrDecrement = operatorToken.Kind == Lexer.LexerTokenKind.PlusPlus ||
                                          operatorToken.Kind == Lexer.LexerTokenKind.MinusMinus;
             if (isIncrementOrDecrement && operand is not VariableExpression)
-                throw new Exception("Variable must be after increment or decrement.");
+                throw new Exception("Variable must be after prefix increment or decrement.");
 
             return new UnaryExpression(operatorToken, operand);
         }
@@ -216,17 +213,30 @@ public class Parser(string text)
     {
         var expression = ParsePrimary();
 
-        if (Current.Kind == Lexer.LexerTokenKind.PlusPlus ||
-            Current.Kind == Lexer.LexerTokenKind.MinusMinus)
+        while (true)
         {
-            var operatorToken = NextToken();
-
-            var isIncrementOrDecrement = operatorToken.Kind == Lexer.LexerTokenKind.PlusPlus ||
-                                         operatorToken.Kind == Lexer.LexerTokenKind.MinusMinus;
-            if (isIncrementOrDecrement && expression is not VariableExpression)
-                throw new Exception("Variable must be after increment or decrement.");
-
-            return new PostfixUnaryExpression(operatorToken, expression);
+            if (Current.Kind == Lexer.LexerTokenKind.OParen)
+            {
+                expression = ParseCallExpression(expression);
+            }
+            else if (Current.Kind == Lexer.LexerTokenKind.PlusPlus)
+            {
+                var operatorToken = NextToken();
+                if (expression is not VariableExpression)
+                    throw new Exception("Variable must be before postfix increment.");
+                expression = new PostfixUnaryExpression(operatorToken, expression);
+            }
+            else if (Current.Kind == Lexer.LexerTokenKind.MinusMinus)
+            {
+                var operatorToken = NextToken();
+                if (expression is not VariableExpression)
+                    throw new Exception("Variable must be before postfix decrement.");
+                expression = new PostfixUnaryExpression(operatorToken, expression);
+            }
+            else
+            {
+                break;
+            }
         }
 
         return expression;
@@ -234,16 +244,8 @@ public class Parser(string text)
 
     private Expression ParsePrimary()
     {
-        Expression left = ParseAtom();
-
-        while (Current.Kind == Lexer.LexerTokenKind.OParen)
-        {
-            left = ParseCallExpression(left);
-        }
-
-        return left;
+        return ParseAtom();
     }
-
 
     private Expression ParseAtom()
     {
@@ -270,13 +272,13 @@ public class Parser(string text)
                 return new VariableExpression(NextToken());
 
             default:
-                throw new Exception($"Unexpected token <{Current.Kind}>");
+                throw new Exception($"Unexpected token <{Current.Kind}> in expression.");
         }
     }
 
-    private Expression ParseCallExpression(Expression function)
+    private CallExpression ParseCallExpression(Expression function)
     {
-        NextToken();
+        NextToken(); // Eat '('
         var arguments = new List<Expression>();
 
         if (Current.Kind != Lexer.LexerTokenKind.CParen)
@@ -288,11 +290,12 @@ public class Parser(string text)
                 if (Current.Kind != Lexer.LexerTokenKind.Comma)
                     break;
 
-                NextToken();
+                NextToken(); // Eat ','
             }
         }
 
-        if (Match(Lexer.LexerTokenKind.CParen) is null) throw new Exception("Expected ')'");
+        if (Match(Lexer.LexerTokenKind.CParen) is null) 
+            throw new Exception("Expected ')'");
 
         return new CallExpression(function, arguments);
     }
@@ -321,6 +324,9 @@ public class Parser(string text)
             case BooleanExpression b:
                 Console.Write(" ");
                 Console.Write(b.Value.ToString().ToLower());
+                break;
+             case CallExpression:
+                Console.Write(" (Function Call)");
                 break;
         }
 

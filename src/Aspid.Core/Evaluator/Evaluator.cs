@@ -57,6 +57,7 @@ public class Evaluator
             BoundConversionExpression conv => EvaluateConversion(conv),
             BoundUnaryExpression un => EvaluateUnaryExpression(un),
             BoundBinaryExpression b => EvaluateBinaryExpression(b),
+            BoundCallExpression call => EvaluateCallExpression(call),
 
             // Error Node
             BoundErrorNode => null,
@@ -110,6 +111,7 @@ public class Evaluator
         {
             return Evaluate(node.ThenStatement);
         }
+
         if (node.ElseStatement != null)
         {
             return Evaluate(node.ElseStatement);
@@ -139,6 +141,18 @@ public class Evaluator
     private object EvaluateVariableExpression(BoundVariableExpression node)
     {
         return GetVariable(node.Name);
+    }
+
+    private object? EvaluateCallExpression(BoundCallExpression node)
+    {
+        var args = node.Arguments.Select(Evaluate).ToArray(); 
+
+        if (BuiltInFunctions.Implementations.TryGetValue(node.Function, out var implementation))
+        {
+            return implementation(args!);
+        }
+
+        throw new Exception($"Function {node.Function.Name} is not implemented.");
     }
 
     private object EvaluateUnaryExpression(BoundUnaryExpression node)

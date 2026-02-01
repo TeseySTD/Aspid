@@ -132,11 +132,40 @@ public class Binder
             UnaryExpression un => BindUnaryExpression(un),
             PostfixUnaryExpression pstfun => BindPostfixUnaryExpression(pstfun),
             BinaryExpression b => BindBinaryExpression(b),
+            CallExpression call => BindCallExpression(call),
             VariableExpression v => BindVariableExpression(v),
             _ => throw new Exception($"Unexpected syntax {syntax.Kind}")
         };
     }
 
+    private BoundNode BindCallExpression(CallExpression syntax)
+    {
+        if (syntax.Function is VariableExpression vExpr)
+        {
+            var name = vExpr.VariableName.Text;
+            var builtin = BuiltInFunctions.GetAll().FirstOrDefault(f => f.Name == name);
+            if (builtin != null)
+            {
+                var boundArgs = syntax.Arguments.Select(BindExpression).ToList();
+                if (builtin.Parameters.Any(p => p.Type != boundArgs[builtin.Parameters.IndexOf(p)].Type))
+                {
+                    var errText =
+                        $"Invalid args for function {name}: {string.Join(", ", boundArgs.Select(p => p.ToString()))}";
+                    Diagnostics.Add(errText);
+                    return new BoundErrorNode(errText);
+                }
+
+                return new BoundCallExpression(builtin, boundArgs);
+            }
+
+            {
+                Diagnostics.Add($"Function {vExpr.VariableName} is not supported");
+            }
+        }
+
+        Diagnostics.Add("Non-declared functions are not supported for now");
+        return new BoundErrorNode("");
+    }
 
     private BoundNode BindNumberExpression(NumberExpression syntax)
     {
@@ -283,7 +312,12 @@ public class Binder
         return expression;
     }
 
-    public static void PrettyPrint(BoundNode node, string indent = "", bool isFirst = false, bool isLast = true)
+    public static void PrettyPrint(
+        BoundNode node,
+        string indent = "",
+        bool isFirst = false,
+        bool isLast = true,
+        string optionalLabel = "")
     {
         var marker = isLast ? "└── " : "├── ";
 
@@ -292,12 +326,25 @@ public class Binder
         if (!isFirst) Console.Write(marker);
         Console.ResetColor();
 
-        PrintNodeInfo(node);
+        PrintNodeInfo(node, optionalLabel);
 
         indent += isLast ? "    " : "│   ";
 
         switch (node)
         {
+            case BoundIfStatement ifStatement:
+                PrettyPrint(ifStatement.Condition, indent, isFirst: false, isLast: false, optionalLabel: "Condition: ");
+                var isElseStatement = ifStatement.ElseStatement != null;
+                PrettyPrint(ifStatement.ThenStatement, indent, isLast: !isElseStatement, optionalLabel: "Then Statement: ");
+                if (isElseStatement)
+                    PrettyPrint(ifStatement.ElseStatement!, indent, isLast: true, optionalLabel: "Else Statement: ");
+                break;
+
+            case BoundBlockStatement blockStatement:
+                for (int i = 0; i < blockStatement.Statements.Count; i++)
+                    PrettyPrint(blockStatement.Statements[i], indent, i == blockStatement.Statements.Count - 1);
+                break;
+
             case BoundVariableDeclarationStatement vd:
                 var isInitialized = vd.Initializer is not null;
                 PrettyPrint(vd.Variable, indent, isLast: !isInitialized);
@@ -314,38 +361,65 @@ public class Binder
                 PrettyPrint(b.Left, indent, isLast: false);
                 PrettyPrint(b.Right, indent, isLast: true);
                 break;
+
+            case BoundCallExpression call:
+                for (int i = 0; i < call.Arguments.Count; i++)
+                    PrettyPrint(call.Arguments[i], indent, isLast: i == call.Arguments.Count - 1);
+                break;
         }
     }
 
-    private static void PrintNodeInfo(BoundNode node)
+    private static void PrintNodeInfo(BoundNode node, string optionalLabel = "")
     {
         switch (node)
         {
             case BoundBinaryExpression b:
                 Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.Write(optionalLabel);
                 Console.Write($"BinaryExpression ({b.Op.Kind})");
                 break;
             case BoundLiteralExpression l:
                 Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.Write(optionalLabel);
                 Console.Write($"Literal ({l.Value})");
                 break;
             case BoundVariableExpression v:
                 Console.ForegroundColor = ConsoleColor.Green;
+                Console.Write(optionalLabel);
                 Console.Write($"Variable ({v.Name})");
+                break;
+            case BoundCallExpression call:
+                Console.ForegroundColor = ConsoleColor.Magenta;
+                Console.Write(optionalLabel);
+                Console.Write($"Function call ({call.Function.Name})");
                 break;
             case BoundVariableDeclarationStatement vd:
                 Console.ForegroundColor = ConsoleColor.DarkMagenta;
+                Console.Write(optionalLabel);
                 Console.Write($"Variable declaration ({vd.Variable.Name})");
                 break;
             case BoundAssignmentStatement a:
                 Console.ForegroundColor = ConsoleColor.Magenta;
+                Console.Write(optionalLabel);
                 Console.Write($"Assignment ({a.Variable.Name})");
+                break;
+            case BoundIfStatement:
+                Console.ForegroundColor = ConsoleColor.Blue;
+                Console.Write(optionalLabel);
+                Console.Write("If statement");
+                break;
+            case BoundBlockStatement:
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.Write(optionalLabel);
+                Console.Write("Block statement");
                 break;
             case BoundErrorNode err:
                 Console.ForegroundColor = ConsoleColor.Red;
+                Console.Write(optionalLabel);
                 Console.Write($"{err.ErrorText}");
                 break;
             default:
+                Console.Write(optionalLabel);
                 Console.Write(node.GetType().Name);
                 break;
         }

@@ -41,3 +41,30 @@ public sealed class BoundVariableExpression(string name, TypeSymbol type) : Boun
     public string Name { get; } = name;
     public override TypeSymbol Type { get; } = type;
 }
+
+public sealed class FunctionSymbol
+{
+    public string Name { get; }
+    public List<ParameterSymbol> Parameters { get; }
+    public TypeSymbol Type { get; }
+
+    public FunctionSymbol(string name, List<ParameterSymbol> parameters, TypeSymbol type)
+    {
+        Name = name;
+        Parameters = parameters;
+        Type = type;
+    }
+}
+
+public sealed class ParameterSymbol(string name, TypeSymbol type)
+{
+    public string Name { get; } = name;
+    public TypeSymbol Type { get; } = type;
+}
+
+public sealed class BoundCallExpression(FunctionSymbol function, List<BoundNode> arguments) : BoundNode
+{
+    public FunctionSymbol Function { get; } = function;
+    public List<BoundNode> Arguments { get; } = arguments;
+    public override TypeSymbol Type => Function.Type;
+}
