@@ -8,24 +8,33 @@ var values = new Dictionary<string, object>();
 var binder = new Binder(variables);
 var evaluator = new Evaluator(values);
 
-while (true)
+if (args.Length > 0)
 {
-    Console.Write(">>");
-    string? input = Console.ReadLine();
-    if (string.IsNullOrWhiteSpace(input))
+    var fileName = args[0];
+    if (File.Exists(fileName))
     {
-        Console.WriteLine();
-        continue;
+        var text = File.ReadAllText(fileName);
+        Run(text);
     }
+    else
+    {
+        Console.ForegroundColor = ConsoleColor.Red;
+        Console.WriteLine($"Error: File '{fileName}' not found.");
+        Console.ResetColor();
+    }
+}
+else
+    RunRepl();
 
-    Parser parser = new Parser(input);
+void Run(string text)
+{
+    var parser = new Parser(text);
     var statements = parser.Parse();
-    
-    
+
     foreach (var statement in statements)
     {
         binder.Diagnostics.Clear();
-        
+
         var boundNode = binder.Bind(statement);
 
         if (binder.Diagnostics.Any())
@@ -35,14 +44,15 @@ while (true)
             {
                 Console.WriteLine(diagnostic);
             }
+
             Console.ResetColor();
         }
         else
         {
-            try 
+            try
             {
                 var result = evaluator.Evaluate(boundNode);
-                
+
                 if (result != null && boundNode.Type != TypeSymbol.Void)
                 {
                     Console.ForegroundColor = ConsoleColor.Green;
@@ -55,6 +65,62 @@ while (true)
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"Runtime Error: {e.Message}");
                 Console.ResetColor();
+            }
+        }
+    }
+}
+
+void RunRepl()
+{
+    while (true)
+    {
+        Console.Write(">>");
+        string? input = Console.ReadLine();
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            Console.WriteLine();
+            continue;
+        }
+
+        Parser parser = new Parser(input);
+        var statements = parser.Parse();
+
+
+        foreach (var statement in statements)
+        {
+            binder.Diagnostics.Clear();
+
+            var boundNode = binder.Bind(statement);
+
+            if (binder.Diagnostics.Any())
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                foreach (var diagnostic in binder.Diagnostics)
+                {
+                    Console.WriteLine(diagnostic);
+                }
+
+                Console.ResetColor();
+            }
+            else
+            {
+                try
+                {
+                    var result = evaluator.Evaluate(boundNode);
+
+                    if (result != null && boundNode.Type != TypeSymbol.Void)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.WriteLine(result);
+                        Console.ResetColor();
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"Runtime Error: {e.Message}");
+                    Console.ResetColor();
+                }
             }
         }
     }
