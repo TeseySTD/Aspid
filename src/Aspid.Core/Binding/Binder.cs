@@ -5,24 +5,40 @@ namespace Aspid.Core.Binding;
 
 public class Binder
 {
-    private readonly Dictionary<string, TypeSymbol> _variables;
+    private BoundScope _scope;
     public List<string> Diagnostics { get; } = new();
 
-    public Binder(Dictionary<string, TypeSymbol> variables)
+    public Binder(BoundScope? parent)
     {
-        _variables = variables;
+        _scope = new BoundScope(parent);
     }
 
     public BoundNode Bind(Statement statement)
     {
         return statement switch
         {
+            BlockStatement block => BindBlockStatement(block),
             VariableDeclarationStatement declaration => BindVariableDeclarationStatement(declaration),
             AssignmentStatement assignment => BindAssignmentStatement(assignment),
             IfStatement ifStatement => BindIfStatement(ifStatement),
             ExpressionStatement es => BindExpression(es.Expression),
             _ => throw new NotImplementedException($"Binding for {statement.Kind} not implemented yet.")
         };
+    }
+
+    private BoundNode BindBlockStatement(BlockStatement syntax)
+    {
+        var statements = new List<BoundNode>();
+
+        _scope = new BoundScope(_scope);
+
+        foreach (var statement in syntax.Statements)
+            statements.Add(Bind(statement));
+
+        if (_scope.Parent != null)
+            _scope = _scope.Parent;
+
+        return new BoundBlockStatement(statements);
     }
 
     private BoundNode BindVariableDeclarationStatement(VariableDeclarationStatement declaration)
@@ -48,7 +64,7 @@ public class Binder
             return new BoundErrorNode(assignWrongTypeError);
         }
 
-        if (_variables.TryAdd(name, type))
+        if (_scope.TryDeclare(name, type))
             return new BoundVariableDeclarationStatement(variable, initializer);
 
         var alreadyDeclaredError = $"Cannot declare variable with name {name} because it is already declared.";
@@ -60,8 +76,7 @@ public class Binder
     {
         var name = assignment.IdentifierToken.Text;
         var expression = BindExpression(assignment.Expression);
-
-        if (_variables.TryGetValue(name, out var existingType))
+        if (_scope.TryLookup(name, out var existingType))
         {
             var convertedExpression = BindConversion(expression, existingType);
 
@@ -77,7 +92,7 @@ public class Binder
         }
         else
         {
-            _variables[name] = expression.Type;
+            _scope.TryDeclare(name, expression.Type);
         }
 
         var variable = new BoundVariableExpression(name, expression.Type);
@@ -165,7 +180,7 @@ public class Binder
     private BoundNode BindVariableExpression(VariableExpression syntax)
     {
         var name = syntax.VariableName.Text;
-        if (!_variables.TryGetValue(name, out var type))
+        if (!_scope.TryLookup(name, out var type))
         {
             var errText = $"Variable '{name}' does not exist.";
             Diagnostics.Add(errText);

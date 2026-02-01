@@ -4,11 +4,41 @@ namespace Aspid.Core.Evaluator;
 
 public class Evaluator
 {
-    private readonly Dictionary<string, object> _variables;
+    private readonly Stack<Dictionary<string, object>> _scopes = new();
 
-    public Evaluator(Dictionary<string, object> variables)
+    public Evaluator(Dictionary<string, object> globalVariables)
     {
-        _variables = variables;
+        _scopes.Push(globalVariables);
+    }
+
+    private object GetVariable(string name)
+    {
+        foreach (var scope in _scopes)
+        {
+            if (scope.TryGetValue(name, out var value))
+                return value;
+        }
+
+        throw new Exception($"Variable '{name}' not found in runtime.");
+    }
+
+    private void SetVariable(string name, object value)
+    {
+        foreach (var scope in _scopes)
+        {
+            if (scope.ContainsKey(name))
+            {
+                scope[name] = value;
+                return;
+            }
+        }
+
+        _scopes.Peek()[name] = value;
+    }
+
+    private void DeclareVariable(string name, object value)
+    {
+        _scopes.Peek()[name] = value;
     }
 
     public object? Evaluate(BoundNode node)
@@ -16,6 +46,7 @@ public class Evaluator
         return node switch
         {
             // Statements
+            BoundBlockStatement bl => EvaluateBlockStatement(bl),
             BoundVariableDeclarationStatement v => EvaluateVariableDeclaration(v),
             BoundAssignmentStatement a => EvaluateAssignment(a),
             BoundIfStatement ifStatement => EvaluateIfStatement(ifStatement),
@@ -34,6 +65,20 @@ public class Evaluator
         };
     }
 
+    private object? EvaluateBlockStatement(BoundBlockStatement node)
+    {
+        _scopes.Push(new Dictionary<string, object>());
+
+        foreach (var statement in node.Statements)
+        {
+            Evaluate(statement);
+        }
+
+        _scopes.Pop();
+
+        return null;
+    }
+
     private object? EvaluateVariableDeclaration(BoundVariableDeclarationStatement node)
     {
         var value = node.Initializer != null ? Evaluate(node.Initializer) : null;
@@ -43,7 +88,7 @@ public class Evaluator
             return null;
         }
 
-        _variables[node.Variable.Name] = value;
+        DeclareVariable(node.Variable.Name, value);
 
         return value;
     }
@@ -51,7 +96,9 @@ public class Evaluator
     private object EvaluateAssignment(BoundAssignmentStatement node)
     {
         var value = Evaluate(node.Expression);
-        _variables[node.Variable.Name] = value ?? throw new Exception($"Unexpected node {node.Type} in assignment.");
+        if (value == null)
+            throw new Exception($"Unexpected node {node.Type} in assignment.");
+        SetVariable(node.Variable.Name, value);
         return value;
     }
 
@@ -91,7 +138,7 @@ public class Evaluator
 
     private object EvaluateVariableExpression(BoundVariableExpression node)
     {
-        return _variables[node.Name];
+        return GetVariable(node.Name);
     }
 
     private object EvaluateUnaryExpression(BoundUnaryExpression node)
@@ -129,17 +176,17 @@ public class Evaluator
     {
         if (v.Type == TypeSymbol.Int)
         {
-            var oldVal = (int)_variables[v.Name];
+            var oldVal = (int)GetVariable(v.Name);
             var newVal = oldVal + (int)amount;
-            _variables[v.Name] = newVal;
+            SetVariable(v.Name, newVal);
             return returnNew ? newVal : oldVal;
         }
 
         if (v.Type == TypeSymbol.Double)
         {
-            var oldVal = (double)_variables[v.Name];
+            var oldVal = (double)GetVariable(v.Name);
             var newVal = oldVal + (double)amount;
-            _variables[v.Name] = newVal;
+            SetVariable(v.Name, newVal);
             return returnNew ? newVal : oldVal;
         }
 

@@ -63,26 +63,51 @@ public class Parser(string text)
 
     private Statement ParseStatement()
     {
+        if (Current.Kind == Lexer.LexerTokenKind.Indent)
+            return ParseBlockStatement();
+        if (Current.Kind == Lexer.LexerTokenKind.NewLine)
+        {
+            NextToken();
+            return ParseStatement();
+        }
+
         if (Current.Kind == Lexer.LexerTokenKind.Id &&
             Peek(1).Kind == Lexer.LexerTokenKind.Colon)
-        {
             return ParseVariableDeclaration();
-        }
 
         if (Current.Kind == Lexer.LexerTokenKind.Id &&
             Peek(1).Kind == Lexer.LexerTokenKind.Eq)
-        {
             return ParseAssignmentStatement();
-        }
 
         if (Current.Kind == Lexer.LexerTokenKind.If)
-        {
             return ParseIfStatement();
-        }
 
         var expression = ParseExpression();
 
+        if (Current.Kind == Lexer.LexerTokenKind.NewLine)
+            NextToken(); // Eat newline after statement if it is
+
         return new ExpressionStatement(expression);
+    }
+
+    private BlockStatement ParseBlockStatement()
+    {
+        var indentToken = Match(Lexer.LexerTokenKind.Indent) ?? throw new Exception("Expected Indent");
+        var statements = new List<Statement>();
+
+        while (Current.Kind != Lexer.LexerTokenKind.Dedent && Current.Kind != Lexer.LexerTokenKind.EndOfFile)
+        {
+            while (Current.Kind == Lexer.LexerTokenKind.NewLine)
+                NextToken();
+
+            if (Current.Kind == Lexer.LexerTokenKind.Dedent) break;
+
+            statements.Add(ParseStatement());
+        }
+
+        var dedentToken = Match(Lexer.LexerTokenKind.Dedent) ?? throw new Exception("Expected Dedent");
+
+        return new BlockStatement(indentToken, statements, dedentToken);
     }
 
     private Statement ParseVariableDeclaration()
@@ -121,22 +146,27 @@ public class Parser(string text)
     {
         var ifKeyword = Match(Lexer.LexerTokenKind.If) ?? throw new Exception("Expected If keyword");
         var condition = ParseExpression();
-        var colon = Match(Lexer.LexerTokenKind.Colon) ?? throw new Exception("Expected Colon after condition.");
+        var colon = Match(Lexer.LexerTokenKind.Colon) ?? throw new Exception("Expected Colon");
+
+        if (Current.Kind == Lexer.LexerTokenKind.NewLine)
+            NextToken();
+
         var thenStatement = ParseStatement();
+
         Statement? elseStatement = null;
 
         if (Current.Kind == Lexer.LexerTokenKind.Else)
         {
-            NextToken(); 
-            
-            if (Current.Kind == Lexer.LexerTokenKind.Colon)
-                NextToken();
+            NextToken(); // Skip else
+            if (Current.Kind == Lexer.LexerTokenKind.Colon) Match(Lexer.LexerTokenKind.Colon);
+            if (Current.Kind == Lexer.LexerTokenKind.NewLine) NextToken();
 
             elseStatement = ParseStatement();
         }
 
         return new IfStatement(ifKeyword, colon, condition, thenStatement, elseStatement);
     }
+
 
     private Expression ParseExpression()
     {

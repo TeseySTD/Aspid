@@ -2,11 +2,11 @@
 using Aspid.Core.Evaluator;
 using Aspid.Core.Syntax;
 
-var variables = new Dictionary<string, TypeSymbol>();
-var values = new Dictionary<string, object>();
+var globalScope = new BoundScope(null);
+var globalVariables = new Dictionary<string, object>();
 
-var binder = new Binder(variables);
-var evaluator = new Evaluator(values);
+var binder = new Binder(globalScope);
+var evaluator = new Evaluator(globalVariables);
 
 if (args.Length > 0)
 {

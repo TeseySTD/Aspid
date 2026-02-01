@@ -103,6 +103,20 @@ public sealed record CallExpression(Expression Function, List<Expression> Argume
     }
 }
 
+public sealed record BlockStatement(
+    Lexer.Token IdentToken,
+    IEnumerable<Statement> Statements,
+    Lexer.Token DedentToken) : Statement
+{
+    public override string Kind => nameof(BlockStatement);
+
+    public override IEnumerable<SyntaxNode> GetChildren()
+    {
+        foreach (var statement in Statements) 
+            yield return statement;
+    }
+}
+
 public sealed record AssignmentStatement(
     Lexer.Token IdentifierToken,
     Expression Expression
@@ -144,7 +158,7 @@ public sealed record IfStatement(
     {
         yield return ConditionExpression;
         yield return ThenStatement;
-        if(ElseStatement != null)
+        if (ElseStatement != null)
             yield return ElseStatement;
     }
 }

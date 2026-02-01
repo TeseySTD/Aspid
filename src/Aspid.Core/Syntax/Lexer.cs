@@ -27,6 +27,9 @@ public static class Lexer
         CBracket,
         Comma,
         Not,
+        Indent,
+        Dedent,
+        NewLine,
 
         // Puncts (Compound)
         EqEq,
@@ -47,7 +50,7 @@ public static class Lexer
         EndOfFile
     }
 
-    private static readonly List<(string Text, LexerTokenKind Kind)> OperatorsDefinition = new()
+    private static readonly List<(string Text, LexerTokenKind Kind)> PunctsDefinition = new()
     {
         ("==", LexerTokenKind.EqEq),
         ("!=", LexerTokenKind.NotEq),
@@ -69,11 +72,11 @@ public static class Lexer
         ("!", LexerTokenKind.Not)
     };
 
-    private static readonly (string Text, LexerTokenKind Kind)[] SortedOperators;
+    private static readonly (string Text, LexerTokenKind Kind)[] SortedPuncts;
 
     static Lexer()
     {
-        SortedOperators = OperatorsDefinition
+        SortedPuncts = PunctsDefinition
             .OrderByDescending(op => op.Text.Length)
             .ThenBy(op => op.Text)
             .ToArray();
@@ -82,11 +85,96 @@ public static class Lexer
     public static Token[] Tokenize(string text)
     {
         var tokens = new List<Token>();
+        var indentStack = new Stack<int>();
+        indentStack.Push(0);
+
         int position = 0;
+        bool isStartOfLine = true;
+
 
         while (position < text.Length)
         {
+            if (isStartOfLine)
+            {
+                int currentIndent = 0;
+                int indentStart = position;
+                int spaceCount = 0; 
+
+                while (position < text.Length)
+                {
+                    char c = text[position];
+
+                    if (c == '\t')
+                    {
+                        currentIndent++;
+                        position++;
+                        spaceCount = 0; // Tab drops spaces count
+                    }
+                    else if (c == ' ')
+                    {
+                        position++;
+                        spaceCount++;
+                        if (spaceCount == 4)
+                        {
+                            currentIndent++;
+                            spaceCount = 0;
+                        }
+                    }
+                    else
+                    {
+                        break; 
+                    }
+                }
+
+                // Ignore empty lines
+                if (position < text.Length && (text[position] == '\n' || text[position] == '\r'))
+                {
+                    // skip
+                }
+                else if (position < text.Length)
+                {
+                    int lastIndent = indentStack.Peek();
+
+                    if (currentIndent > lastIndent)
+                    {
+                        // INDENT
+                        while (currentIndent > lastIndent)
+                        {
+                            indentStack.Push(++lastIndent);
+                            tokens.Add(new Token("", LexerTokenKind.Indent, indentStart, position));
+                        }
+                    }
+                    else if (currentIndent < lastIndent)
+                    {
+                        // DEDENT
+                        while (currentIndent < indentStack.Peek())
+                        {
+                            indentStack.Pop();
+                            tokens.Add(new Token("", LexerTokenKind.Dedent, indentStart, position));
+                        }
+
+                        if (currentIndent != indentStack.Peek())
+                            throw new Exception("Indentation error");
+                    }
+                }
+
+                isStartOfLine = false;
+            }
+
+            if (position >= text.Length) break;
+
             char current = text[position];
+
+            if (current == '\n' || (current == '\r' && position + 1 < text.Length && text[position + 1] == '\n'))
+            {
+                if (current == '\r') position++;
+
+                position++; // Skip \n
+
+                tokens.Add(new Token("\n", LexerTokenKind.NewLine, position - 1, position));
+                isStartOfLine = true;
+                continue;
+            }
 
             // Skip spaces
             if (char.IsWhiteSpace(current))
@@ -120,7 +208,7 @@ public static class Lexer
                 continue;
             }
 
-            if (TryMatchOperator(text, position, out var opToken, out int length))
+            if (TryMatchPunct(text, position, out var opToken, out int length))
             {
                 tokens.Add(opToken);
                 position += length;
@@ -131,13 +219,19 @@ public static class Lexer
             position++;
         }
 
+        while (indentStack.Peek() > 0)
+        {
+            indentStack.Pop();
+            tokens.Add(new Token("", LexerTokenKind.Dedent, position, position));
+        }
+
         tokens.Add(new Token("\0", LexerTokenKind.EndOfFile, position, position));
         return tokens.ToArray();
     }
 
-    private static bool TryMatchOperator(string text, int position, out Token token, out int length)
+    private static bool TryMatchPunct(string text, int position, out Token token, out int length)
     {
-        foreach (var op in SortedOperators)
+        foreach (var op in SortedPuncts)
         {
             if (position + op.Text.Length > text.Length)
                 continue;
@@ -307,7 +401,7 @@ public static class Lexer
 
                 foreach (var t in subTokens)
                 {
-                    if (t.Kind == LexerTokenKind.EndOfFile) continue; 
+                    if (t.Kind == LexerTokenKind.EndOfFile) continue;
                     // Change position of token to original one
                     resultTokens.Add(t with
                     {

@@ -1,5 +1,11 @@
 ﻿namespace Aspid.Core.Binding;
 
+public sealed class BoundBlockStatement(List<BoundNode> statements) : BoundNode
+{
+    public List<BoundNode> Statements { get; } = statements;
+    public override TypeSymbol Type => TypeSymbol.Void;
+}
+
 public sealed class BoundVariableDeclarationStatement(BoundVariableExpression variable, BoundNode? initializer)
     : BoundNode
 {
