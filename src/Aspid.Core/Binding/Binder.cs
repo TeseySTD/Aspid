@@ -148,6 +148,18 @@ public class Binder
         if (syntax.Function is VariableExpression vExpr)
         {
             var name = vExpr.VariableName.Text;
+            if (TypeSymbol.Parse(name) is { } typeSymbol) // Type Conversion e.g int(var)
+            {
+                if (syntax.Arguments.Count != 1)
+                {
+                    Diagnostics.Add($"Type conversion '{name}' requires exactly 1 argument.");
+                    return new BoundErrorNode("");
+                }
+
+                var argument = BindExpression(syntax.Arguments[0]);
+                
+                return new BoundConversionExpression(typeSymbol, argument);
+            }
             var builtin = BuiltInFunctions.GetAll().FirstOrDefault(f => f.Name == name);
             if (builtin != null)
             {
