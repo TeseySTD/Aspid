@@ -60,6 +60,23 @@ public sealed record VariableExpression(Lexer.Token VariableName) : Expression
     }
 }
 
+public sealed record ArrayExpression(List<Expression> Elements) : Expression
+{
+    public override string Kind => nameof(ArrayExpression);
+    public override IEnumerable<SyntaxNode> GetChildren() => Elements;
+}
+
+public sealed record ArrayAccessExpression(Expression Array, Expression Index) : Expression
+{
+    public override string Kind => nameof(ArrayAccessExpression);
+
+    public override IEnumerable<SyntaxNode> GetChildren()
+    {
+        yield return Array;
+        yield return Index;
+    }
+}
+
 public sealed record BinaryExpression(Expression Left, Lexer.Token OperatorToken, Expression Right)
     : Expression
 {
@@ -112,13 +129,13 @@ public sealed record BlockStatement(
 
     public override IEnumerable<SyntaxNode> GetChildren()
     {
-        foreach (var statement in Statements) 
+        foreach (var statement in Statements)
             yield return statement;
     }
 }
 
 public sealed record AssignmentStatement(
-    Lexer.Token IdentifierToken,
+    Expression Identifier,
     Expression Expression
 ) : Statement
 {

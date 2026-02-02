@@ -22,6 +22,17 @@ public sealed class BoundAssignmentStatement(BoundVariableExpression variable, B
     public override TypeSymbol Type => TypeSymbol.Void;
 }
 
+public sealed class BoundArrayAssignmentStatement(
+    BoundArrayAccessExpression arrayAccess,
+    BoundNode expression
+) : BoundNode
+{
+    public BoundArrayAccessExpression ArrayAccess { get; } = arrayAccess;
+    public BoundNode Expression { get; } = expression;
+
+    public override TypeSymbol Type => TypeSymbol.Void;
+}
+
 public sealed class BoundIfStatement(
     BoundNode condition,
     BoundNode thenStatement,

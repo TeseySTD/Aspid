@@ -1,15 +1,18 @@
 ﻿namespace Aspid.Core.Binding;
 
-public sealed class TypeSymbol
+public sealed record TypeSymbol
 {
     public string Name { get; }
 
-    private TypeSymbol(string name)
+    private TypeSymbol(string name, TypeSymbol? elementType = null)
     {
         Name = name;
+        ElementType = elementType;
     }
 
     public override string ToString() => Name;
+    public bool IsArray => Name.EndsWith("[]");
+    public TypeSymbol? ElementType { get; }
 
     // Built-in types
     public static readonly TypeSymbol Int = new("int");
@@ -23,16 +26,32 @@ public sealed class TypeSymbol
     public bool IsBoolean => this == Bool;
     public bool IsString => this == String;
 
-    public static TypeSymbol? Parse(string s) => s switch
+    public static TypeSymbol GetArrayType(TypeSymbol elementType)
     {
-        "int" => Int,
-        "double" => Double,
-        "bool" => Bool,
-        "string" => String,
-        "void" => Void,
-        "any" => Any,
-        _ => null
-    };
+        return new TypeSymbol($"{elementType.Name}[]", elementType);
+    }
+
+    public static TypeSymbol? Parse(string s)
+    {
+        if (s.EndsWith("[]"))
+        {
+            var elementTypeName = s.Substring(0, s.Length - 2);
+            var elementType = Parse(elementTypeName);
+            if (elementType != null)
+                return GetArrayType(elementType);
+        }
+
+        return s switch
+        {
+            "int" => Int,
+            "string" => String,
+            "bool" => Bool,
+            "double" => Double,
+            "void" => Void,
+            "any" => Any,
+            _ => null
+        };
+    }
 }
 
 public abstract class BoundNode

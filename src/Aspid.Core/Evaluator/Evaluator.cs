@@ -50,6 +50,7 @@ public class Evaluator
             BoundBlockStatement bl => EvaluateBlockStatement(bl),
             BoundVariableDeclarationStatement v => EvaluateVariableDeclaration(v),
             BoundAssignmentStatement a => EvaluateAssignment(a),
+            BoundArrayAssignmentStatement a => EvaluateArrayAssignment(a),
             BoundIfStatement ifStatement => EvaluateIfStatement(ifStatement),
 
             // Expressions
@@ -59,6 +60,8 @@ public class Evaluator
             BoundUnaryExpression un => EvaluateUnaryExpression(un),
             BoundBinaryExpression b => EvaluateBinaryExpression(b),
             BoundCallExpression call => EvaluateCallExpression(call),
+            BoundArrayExpression array => EvaluateArrayExpression(array),
+            BoundArrayAccessExpression arrayAccess => EvaluateArrayAccessExpression(arrayAccess),
 
             // Error Node
             BoundErrorNode => null,
@@ -101,6 +104,29 @@ public class Evaluator
         SetVariable(node.Variable.Name, value);
         return value;
     }
+
+    private object EvaluateArrayAssignment(BoundArrayAssignmentStatement node)
+    {
+        var arrayObject = Evaluate(node.ArrayAccess.Array);
+        var indexObject = Evaluate(node.ArrayAccess.Index);
+        var value = Evaluate(node.Expression);
+
+        if (arrayObject is List<object> list)
+        {
+            var index = Convert.ToInt32(indexObject);
+
+            if (index < 0) index = list.Count + index;
+
+            if (index < 0 || index >= list.Count)
+                throw new IndexOutOfRangeException($"Index {index} is out of bounds.");
+
+            list[index] = value;
+            return value;
+        }
+
+        throw new Exception($"Cannot assign to non-array object of type {arrayObject?.GetType()}.");
+    }
+
 
     private object? EvaluateIfStatement(BoundIfStatement node)
     {
@@ -154,6 +180,41 @@ public class Evaluator
     private object EvaluateVariableExpression(BoundVariableExpression node)
     {
         return GetVariable(node.Name);
+    }
+
+    private object EvaluateArrayExpression(BoundArrayExpression node)
+    {
+        var list = new List<object>();
+        if (node.Elements != null)
+            foreach (var element in node.Elements)
+            {
+                var result = Evaluate(element);
+                if (result is null) throw new Exception($"Unexpected element in array expression: {element.Type}");
+                list.Add(result);
+            }
+
+        return list;
+    }
+
+    private object EvaluateArrayAccessExpression(BoundArrayAccessExpression node)
+    {
+        var arrayObj = Evaluate(node.Array);
+        var indexObj = Evaluate(node.Index);
+
+        if (arrayObj is List<object> list)
+        {
+            var index = Convert.ToInt32(indexObj);
+
+            // Negative indexes
+            if (index < 0) index = list.Count + index;
+
+            if (index < 0 || index >= list.Count)
+                throw new IndexOutOfRangeException($"Index {index} is out of range.");
+
+            return list[index];
+        }
+
+        throw new Exception($"Cannot index non-array object of type {arrayObj?.GetType()}.");
     }
 
     private object? EvaluateCallExpression(BoundCallExpression node)

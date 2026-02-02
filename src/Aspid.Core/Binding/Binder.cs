@@ -76,32 +76,84 @@ public class Binder
 
     private BoundNode BindAssignmentStatement(AssignmentStatement assignment)
     {
-        var name = assignment.IdentifierToken.Text;
         var expression = BindExpression(assignment.Expression);
-        if (_scope.TryLookup(name, out var existingType))
-        {
-            if (existingType != TypeSymbol.Any)
-            {
-                var convertedExpression = BindConversion(expression, existingType);
 
-                if (existingType != convertedExpression.Type)
+        if (assignment.Identifier is VariableExpression variableExpr)
+        {
+            var name = variableExpr.VariableName.Text;
+            if (_scope.TryLookup(name, out var existingType))
+            {
+                if (existingType != TypeSymbol.Any)
+                {
+                    var convertedExpression = BindConversion(expression, existingType);
+
+                    if (existingType != convertedExpression.Type)
+                    {
+                        var errText =
+                            $"Cannot assign type '{convertedExpression.Type}' to variable '{name}' of type '{existingType}'.";
+                        Diagnostics.Add(errText);
+                        return new BoundErrorNode(errText);
+                    }
+
+                    expression = convertedExpression;
+                }
+            }
+            else
+            {
+                _scope.TryDeclare(name, TypeSymbol.Any);
+            }
+
+            var variable = new BoundVariableExpression(name, expression.Type);
+            return new BoundAssignmentStatement(variable, expression);
+        }
+
+        if (assignment.Identifier is ArrayAccessExpression arrayAccess)
+        {
+            var boundAccessNode = BindExpression(arrayAccess);
+
+            if (boundAccessNode is BoundErrorNode)
+                return boundAccessNode;
+
+            if (boundAccessNode is not BoundArrayAccessExpression boundAccess)
+            {
+                var errText = "Expression is not a valid array access.";
+                Diagnostics.Add(errText);
+                return new BoundErrorNode(errText);
+
+            }
+            var root = boundAccess.Array;
+            while (root is BoundArrayAccessExpression nested) // For multidimensional  arrays
+            {
+                root = nested.Array;
+            }
+
+            if (root is not BoundVariableExpression)
+            {
+                var errText = "Expression is not a valid array access. Assignment target must be a variable.";
+                Diagnostics.Add(errText);
+                return new BoundErrorNode(errText);
+            }
+
+            var elementType = boundAccess.Type; 
+
+            if (elementType != TypeSymbol.Any)
+            {
+                var convertedExpression = BindConversion(expression, elementType);
+                if (elementType != convertedExpression.Type)
                 {
                     var errText =
-                        $"Cannot assign type '{convertedExpression.Type}' to variable '{name}' of type '{existingType}'.";
+                        $"Cannot assign type '{convertedExpression.Type}' to array element of type '{elementType}'.";
                     Diagnostics.Add(errText);
                     return new BoundErrorNode(errText);
                 }
 
                 expression = convertedExpression;
             }
-        }
-        else
-        {
-            _scope.TryDeclare(name, TypeSymbol.Any);
+
+            return new BoundArrayAssignmentStatement(boundAccess, expression);
         }
 
-        var variable = new BoundVariableExpression(name, expression.Type);
-        return new BoundAssignmentStatement(variable, expression);
+        throw new Exception($"Assignment to '{assignment.Identifier.Kind}' is not supported.");
     }
 
     private BoundNode BindIfStatement(IfStatement statement)
@@ -138,6 +190,8 @@ public class Binder
             PostfixUnaryExpression pstfun => BindPostfixUnaryExpression(pstfun),
             BinaryExpression b => BindBinaryExpression(b),
             CallExpression call => BindCallExpression(call),
+            ArrayExpression array => BindArrayExpression(array),
+            ArrayAccessExpression arrayAccess => BindArrayAccessExpression(arrayAccess),
             VariableExpression v => BindVariableExpression(v),
             _ => throw new Exception($"Unexpected syntax {syntax.Kind}")
         };
@@ -157,9 +211,10 @@ public class Binder
                 }
 
                 var argument = BindExpression(syntax.Arguments[0]);
-                
+
                 return new BoundConversionExpression(typeSymbol, argument);
             }
+
             var builtin = BuiltInFunctions.GetAll().FirstOrDefault(f => f.Name == name);
             if (builtin != null)
             {
@@ -225,6 +280,48 @@ public class Binder
     {
         var text = syntax.StringToken.Text;
         return new BoundLiteralExpression(text);
+    }
+
+    private BoundNode BindArrayExpression(ArrayExpression syntax)
+    {
+        var elements = syntax.Elements.Select(BindExpression).ToList();
+
+        TypeSymbol elementType = TypeSymbol.Any;
+
+        if (elements.Count > 0)
+        {
+            var firstType = elements[0].Type;
+            if (elements.All(e => e.Type == firstType))
+            {
+                elementType = firstType;
+            }
+        }
+
+        var arrayType = TypeSymbol.GetArrayType(elementType);
+        return new BoundArrayExpression(elements, arrayType);
+    }
+
+    private BoundNode BindArrayAccessExpression(ArrayAccessExpression syntax)
+    {
+        var array = BindExpression(syntax.Array);
+        var index = BindExpression(syntax.Index);
+
+        if (!array.Type.IsArray && array.Type != TypeSymbol.Any)
+        {
+            var errText = $"Cannot apply indexing to type '{array.Type}'.";
+            Diagnostics.Add(errText);
+            return new BoundErrorNode(errText);
+        }
+
+        if (index.Type != TypeSymbol.Int && index.Type != TypeSymbol.Any)
+        {
+            var errText = "Array index must be an integer.";
+            Diagnostics.Add(errText);
+            return new BoundErrorNode(errText);
+        }
+
+        var resultType = array.Type.ElementType ?? TypeSymbol.Any;
+        return new BoundArrayAccessExpression(array, index, resultType);
     }
 
     private BoundNode BindVariableExpression(VariableExpression syntax)

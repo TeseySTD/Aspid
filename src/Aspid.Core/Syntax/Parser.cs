@@ -81,8 +81,8 @@ public class Parser(string text)
             Peek(1).Kind == Lexer.LexerTokenKind.Colon)
             return ParseVariableDeclaration();
 
-        if (Current.Kind == Lexer.LexerTokenKind.Id &&
-            Peek(1).Kind == Lexer.LexerTokenKind.Eq)
+        if ((Current.Kind == Lexer.LexerTokenKind.Id && Peek(1).Kind == Lexer.LexerTokenKind.Eq) ||
+            (Current.Kind == Lexer.LexerTokenKind.Id && Peek(1).Kind == Lexer.LexerTokenKind.OBracket))
             return ParseAssignmentStatement();
 
         if (Current.Kind == Lexer.LexerTokenKind.If)
@@ -125,6 +125,19 @@ public class Parser(string text)
 
         var typeIdentifier = Match(Lexer.LexerTokenKind.Id)
                              ?? throw new Exception("Expected type identifier");
+        // For array types
+        while (Current.Kind == Lexer.LexerTokenKind.OBracket)
+        {
+            NextToken();
+
+            if (Match(Lexer.LexerTokenKind.CBracket) is null)
+            {
+                throw new Exception("Expected ']' in array type declaration.");
+            }
+
+            typeIdentifier = typeIdentifier with { Text = typeIdentifier.Text + "[]" };
+        }
+
 
         var eq = Match(Lexer.LexerTokenKind.Eq);
 
@@ -139,10 +152,15 @@ public class Parser(string text)
 
     private Statement ParseAssignmentStatement()
     {
-        var identifier = Match(Lexer.LexerTokenKind.Id) ?? throw new Exception("Expected Id");
+        var isArrayAssignment = Current.Kind == Lexer.LexerTokenKind.Id &&
+                                Peek(1).Kind == Lexer.LexerTokenKind.OBracket;
+        Expression id = ParseExpression();
+        if (isArrayAssignment && id is not ArrayAccessExpression)
+            throw new Exception("Expected an array access expression.");
+        
         Match(Lexer.LexerTokenKind.Eq);
         var right = ParseExpression();
-        return new AssignmentStatement(identifier, right);
+        return new AssignmentStatement(id, right);
     }
 
     private Statement ParseIfStatement()
@@ -225,6 +243,15 @@ public class Parser(string text)
             {
                 expression = ParseCallExpression(expression);
             }
+            else if (Current.Kind == Lexer.LexerTokenKind.OBracket)
+            {
+                NextToken(); // '['
+                var index = ParseExpression();
+                if (Current.Kind != Lexer.LexerTokenKind.CBracket)
+                    throw new Exception("Expected ']'");
+                NextToken(); // ']'
+                expression = new ArrayAccessExpression(expression, index);
+            }
             else if (Current.Kind == Lexer.LexerTokenKind.PlusPlus)
             {
                 var operatorToken = NextToken();
@@ -274,12 +301,36 @@ public class Parser(string text)
             case Lexer.LexerTokenKind.String:
                 return new StringExpression(NextToken());
 
+            case Lexer.LexerTokenKind.OBracket:
+                return ParseArrayExpression();
+
             case Lexer.LexerTokenKind.Id:
                 return new VariableExpression(NextToken());
 
             default:
                 throw new Exception($"Unexpected token <{Current.Kind}> in expression.");
         }
+    }
+
+    private Expression ParseArrayExpression()
+    {
+        NextToken(); // Eat '['
+        var elements = new List<Expression>();
+
+        if (Current.Kind != Lexer.LexerTokenKind.CBracket)
+        {
+            while (true)
+            {
+                elements.Add(ParseExpression());
+                if (Current.Kind != Lexer.LexerTokenKind.Comma) break;
+                NextToken();
+            }
+        }
+
+        if (Current.Kind != Lexer.LexerTokenKind.CBracket)
+            throw new Exception("Expected ']'");
+        NextToken();
+        return new ArrayExpression(elements);
     }
 
     private CallExpression ParseCallExpression(Expression function)

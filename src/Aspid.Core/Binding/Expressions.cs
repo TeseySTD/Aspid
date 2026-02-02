@@ -42,6 +42,18 @@ public sealed class BoundVariableExpression(string name, TypeSymbol type) : Boun
     public override TypeSymbol Type { get; } = type;
 }
 
+public sealed class BoundArrayExpression(List<BoundNode>? elements, TypeSymbol type) : BoundNode
+{
+    public List<BoundNode>? Elements { get; } = elements;
+    public override TypeSymbol Type { get; } = type;
+}
+
+public sealed class BoundArrayAccessExpression(BoundNode array, BoundNode index, TypeSymbol type) : BoundNode
+{
+    public BoundNode Index { get; } = index;
+    public BoundNode Array { get; } = array;
+    public override TypeSymbol Type { get; } = type;
+}
 public sealed class FunctionSymbol
 {
     public string Name { get; }
