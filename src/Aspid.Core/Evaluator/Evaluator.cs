@@ -1,4 +1,5 @@
-﻿using Aspid.Core.Binding;
+﻿using System.Globalization;
+using Aspid.Core.Binding;
 
 namespace Aspid.Core.Evaluator;
 
@@ -126,9 +127,26 @@ public class Evaluator
         if (node.Type == TypeSymbol.Any && value != null)
             return value;
         if (node.Type == TypeSymbol.Bool)
-            return Convert.ToBoolean(value);
+            return Convert.ToBoolean(value, CultureInfo.InvariantCulture);
         if (node.Type == TypeSymbol.Double)
-            return Convert.ToDouble(value);
+            return Convert.ToDouble(value, CultureInfo.InvariantCulture);
+        if (node.Type == TypeSymbol.Int)
+        {
+            if (value is string s)
+            {
+                s = s.Trim();
+                int hexIndex = s.IndexOf("0x", StringComparison.OrdinalIgnoreCase);
+                if (hexIndex >= 0) // Remove 0x if it is hex number
+                {
+                    s = s.Remove(hexIndex, 2);
+
+                    return Convert.ToInt32(s, 16);
+                }
+            }
+
+            return Convert.ToInt32(value, CultureInfo.InvariantCulture);
+        }
+
 
         throw new Exception($"Unexpected conversion to {node.Type}");
     }
