@@ -91,7 +91,6 @@ public static class Lexer
         int position = 0;
         bool isStartOfLine = true;
 
-
         while (position < text.Length)
         {
             if (isStartOfLine)
@@ -126,10 +125,18 @@ public static class Lexer
                     }
                 }
 
-                // Ignore empty lines
-                if (position < text.Length && (text[position] == '\n' || text[position] == '\r'))
+                bool isComment = position < text.Length && text[position] == '#';
+                
+                // Ignore empty lines and comments
+                if (position < text.Length && (text[position] == '\n' || text[position] == '\r' || isComment))
                 {
-                    // skip
+                    if (isComment)
+                    {
+                        while (position < text.Length && text[position] != '\n' && text[position] != '\r')
+                        {
+                            position++;
+                        }
+                    }
                 }
                 else if (position < text.Length)
                 {
@@ -165,6 +172,7 @@ public static class Lexer
 
             char current = text[position];
 
+            // NewLine handling
             if (current == '\n' || (current == '\r' && position + 1 < text.Length && text[position + 1] == '\n'))
             {
                 if (current == '\r') position++;
@@ -190,9 +198,9 @@ public static class Lexer
                 continue;
             }
 
+            // Strings handling
             switch (current)
             {
-                // Strings
                 case '"':
                     tokens.Add(ParseString(text, position, ref position));
                     continue;
@@ -201,7 +209,18 @@ public static class Lexer
                     continue;
             }
 
-            // Identifiers (Variables, Keywords)
+            // Comments
+            if (current == '#')
+            {
+                while (position < text.Length && text[position] != '\n' && text[position] != '\r')
+                {
+                    position++;
+                }
+
+                continue;
+            }
+
+            // Identifiers
             if (char.IsLetter(current) || current == '_')
             {
                 tokens.Add(ParseId(text, position, ref position));

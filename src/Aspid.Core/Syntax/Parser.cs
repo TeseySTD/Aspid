@@ -55,6 +55,12 @@ public class Parser(string text)
         var statements = new List<Statement>();
         while (Current.Kind != Lexer.LexerTokenKind.EndOfFile)
         {
+            if (Current.Kind == Lexer.LexerTokenKind.NewLine)
+            {
+                NextToken();
+                continue;
+            }
+
             statements.Add(ParseStatement());
         }
 
@@ -294,7 +300,7 @@ public class Parser(string text)
             }
         }
 
-        if (Match(Lexer.LexerTokenKind.CParen) is null) 
+        if (Match(Lexer.LexerTokenKind.CParen) is null)
             throw new Exception("Expected ')'");
 
         return new CallExpression(function, arguments);
@@ -325,7 +331,7 @@ public class Parser(string text)
                 Console.Write(" ");
                 Console.Write(b.Value.ToString().ToLower());
                 break;
-             case CallExpression:
+            case CallExpression:
                 Console.Write(" (Function Call)");
                 break;
         }
