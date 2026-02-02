@@ -1,4 +1,5 @@
-﻿using Aspid.Core.Binding;
+﻿using System.Collections;
+using Aspid.Core.Binding;
 
 namespace Aspid.Core;
 
@@ -31,7 +32,15 @@ public static class BuiltInFunctions
     {
         Implementations[Print] = args =>
         {
-            Console.WriteLine(args[0]);
+            if (args[0] is IEnumerable && args[0] is not string)
+            {
+                var enumerable = (IEnumerable)args[0];
+                Console.Write("[");
+                Console.Write(string.Join(", ", enumerable.Cast<object>())); 
+                Console.Write("]\n");
+            }
+            else
+                Console.WriteLine(args[0]);
             return null;
         };
 
