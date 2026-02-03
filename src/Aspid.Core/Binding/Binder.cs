@@ -23,6 +23,7 @@ public class Binder
             IfStatement ifStatement => BindIfStatement(ifStatement),
             WhileStatement whileStatement => BindWhileStatement(whileStatement),
             DoWhileStatement doWhileStatement => BindDoWhileStatement(doWhileStatement),
+            ForInStatement forInStatement => BindForInStatement(forInStatement),
             ExpressionStatement es => BindExpression(es.Expression),
             _ => throw new NotImplementedException($"Binding for {statement.Kind} not implemented yet.")
         };
@@ -211,6 +212,38 @@ public class Binder
         var actionStatement = Bind(statement.ActionStatement);
 
         return new BoundDoWhileStatement(condition, actionStatement);
+    }
+
+    private BoundNode BindForInStatement(ForInStatement statement)
+    {
+        var enumeratorExpression = BindExpression(statement.Enumerator);
+
+        if (!enumeratorExpression.Type.IsArray && enumeratorExpression.Type != TypeSymbol.Any)
+        {
+            var errText = "Expression is not an array.";
+            Diagnostics.Add(errText);
+            return new BoundErrorNode(errText);
+        }
+
+        var variableType = enumeratorExpression.Type.ElementType ?? TypeSymbol.Any;
+
+        _scope = new BoundScope(_scope);
+
+        var name = statement.Variable.Text;
+
+        if (!_scope.TryDeclare(name, variableType))
+        {
+            Diagnostics.Add($"Variable '{name}' is already declared in this scope.");
+        }
+
+        var variable = new BoundVariableExpression(name, variableType);
+        var variableDeclarationStatement = new BoundVariableDeclarationStatement(variable, null);
+
+        var actionsStatement = Bind(statement.ActionStatement);
+
+        _scope = _scope.Parent!; // Close scope
+
+        return new BoundForInStatement(variableDeclarationStatement, enumeratorExpression, actionsStatement);
     }
 
 

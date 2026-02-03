@@ -213,6 +213,24 @@ public sealed record DoWhileStatement(
     }
 }
 
+public sealed record ForInStatement(
+    Lexer.Token ForKeyword,
+    Lexer.Token Variable,
+    Lexer.Token InKeyword,
+    Expression Enumerator,
+    Lexer.Token Colon,
+    Statement ActionStatement
+) : Statement
+{
+    public override string Kind => nameof(ForInStatement);
+
+    public override IEnumerable<SyntaxNode> GetChildren()
+    {
+        yield return Enumerator;
+        yield return ActionStatement;
+    }
+}
+
 public sealed record ParenthesizedExpression(
     Lexer.Token OpenParenToken,
     Expression Expression,

@@ -54,6 +54,7 @@ public class Evaluator
             BoundIfStatement ifStatement => EvaluateIfStatement(ifStatement),
             BoundWhileStatement whileStatement => EvaluateWhileStatement(whileStatement),
             BoundDoWhileStatement whileStatement => EvaluateDoWhileStatement(whileStatement),
+            BoundForInStatement forInStatement => EvaluateForInStatement(forInStatement),
 
             // Expressions
             BoundLiteralExpression l => l.Value,
@@ -166,10 +167,33 @@ public class Evaluator
         {
             Evaluate(node.ActionStatement);
             condition = (bool?)(Evaluate(node.Condition) ?? null);
-        } 
-        while (condition is true);
+        } while (condition is true);
+
         return null;
     }
+
+    private object? EvaluateForInStatement(BoundForInStatement node)
+    {
+        var collection = Evaluate(node.Enumerator);
+
+        if (collection is List<object> list)
+        {
+            var variableName = node.Variable.Variable.Name;
+
+            foreach (var item in list)
+            {
+                _scopes.Peek()[variableName] = item;
+
+                Evaluate(node.ActionStatement);
+            }
+
+            return null;
+        }
+
+        throw new Exception(
+            $"Unexpected type '{collection?.GetType().Name}' in for-loop. Expected Array (List<object>).");
+    }
+
 
     private object EvaluateConversion(BoundConversionExpression node)
     {

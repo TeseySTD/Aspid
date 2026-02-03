@@ -88,6 +88,11 @@ public class Parser(string text)
         if (Current.Kind == Lexer.LexerTokenKind.If)
             return ParseIfStatement();
 
+        if (Current.Kind == Lexer.LexerTokenKind.For &&
+            Peek(1).Kind == Lexer.LexerTokenKind.Id &&
+            Peek(2).Kind == Lexer.LexerTokenKind.In)
+            return ParseForInStatement();
+
         if (Current.Kind == Lexer.LexerTokenKind.While)
             return ParseWhileStatement();
         
@@ -220,6 +225,17 @@ public class Parser(string text)
             NextToken();
 
         return new DoWhileStatement(doKeyword, whileKeyword, colon, condition, actionStatement);
+    }
+
+    private Statement ParseForInStatement()
+    {
+        var forKeyword = Match(Lexer.LexerTokenKind.For) ?? throw new Exception("Expected For keyword");
+        var variable = Match(Lexer.LexerTokenKind.Id) ?? throw new Exception("Expected Variable");
+        var inKeyword = Match(Lexer.LexerTokenKind.In) ?? throw new Exception("Expected In keyword");
+        var enumerator = ParseExpression();
+        var colon  = Match(Lexer.LexerTokenKind.Colon) ?? throw new Exception("Expected Colon");
+        var actionStatement = ParseStatement();
+        return new ForInStatement(forKeyword, variable, inKeyword, enumerator, colon, actionStatement);
     }
 
     private Expression ParseExpression()

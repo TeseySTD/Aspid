@@ -67,3 +67,15 @@ public sealed class BoundDoWhileStatement(
 
     public override TypeSymbol Type => TypeSymbol.Void;
 }
+
+public sealed class BoundForInStatement(
+    BoundVariableDeclarationStatement variable,
+    BoundNode enumerator,
+    BoundNode actionStatement
+) : BoundNode
+{
+    public BoundVariableDeclarationStatement Variable { get; } = variable;
+    public BoundNode Enumerator { get; } = enumerator;
+    public BoundNode ActionStatement { get; } = actionStatement;
+    public override TypeSymbol Type => TypeSymbol.Void;
+}
