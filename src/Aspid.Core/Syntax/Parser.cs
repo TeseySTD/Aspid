@@ -88,6 +88,12 @@ public class Parser(string text)
         if (Current.Kind == Lexer.LexerTokenKind.If)
             return ParseIfStatement();
 
+        if (Current.Kind == Lexer.LexerTokenKind.While)
+            return ParseWhileStatement();
+        
+        if (Current.Kind == Lexer.LexerTokenKind.Do)
+            return ParseDoWhileStatement();
+
         var expression = ParseExpression();
 
         if (Current.Kind == Lexer.LexerTokenKind.NewLine)
@@ -157,7 +163,7 @@ public class Parser(string text)
         Expression id = ParseExpression();
         if (isArrayAssignment && id is not ArrayAccessExpression)
             throw new Exception("Expected an array access expression.");
-        
+
         Match(Lexer.LexerTokenKind.Eq);
         var right = ParseExpression();
         return new AssignmentStatement(id, right);
@@ -188,6 +194,33 @@ public class Parser(string text)
         return new IfStatement(ifKeyword, colon, condition, thenStatement, elseStatement);
     }
 
+    private Statement ParseWhileStatement()
+    {
+        var whileKeyword = Match(Lexer.LexerTokenKind.While) ?? throw new Exception("Expected While keyword");
+        var condition = ParseExpression();
+        var colon = Match(Lexer.LexerTokenKind.Colon) ?? throw new Exception("Expected Colon");
+
+        if (Current.Kind == Lexer.LexerTokenKind.NewLine)
+            NextToken();
+
+        var actionStatement = ParseStatement();
+
+        return new WhileStatement(whileKeyword, colon, condition, actionStatement);
+    }
+
+    private Statement ParseDoWhileStatement()
+    {
+        var doKeyword = Match(Lexer.LexerTokenKind.Do) ?? throw new Exception("Expected Do keyword");
+        var colon = Match(Lexer.LexerTokenKind.Colon) ?? throw new Exception("Expected Colon");
+        var actionStatement = ParseStatement();
+        var whileKeyword = Match(Lexer.LexerTokenKind.While) ?? throw new Exception("Expected While keyword");
+        var condition = ParseExpression();
+
+        if (Current.Kind == Lexer.LexerTokenKind.NewLine)
+            NextToken();
+
+        return new DoWhileStatement(doKeyword, whileKeyword, colon, condition, actionStatement);
+    }
 
     private Expression ParseExpression()
     {

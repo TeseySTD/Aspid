@@ -180,6 +180,39 @@ public sealed record IfStatement(
     }
 }
 
+public sealed record WhileStatement(
+    Lexer.Token WhileKeyword,
+    Lexer.Token Colon,
+    Expression ConditionExpression,
+    Statement ActionStatement
+) : Statement
+{
+    public override string Kind => nameof(WhileStatement);
+
+    public override IEnumerable<SyntaxNode> GetChildren()
+    {
+        yield return ConditionExpression;
+        yield return ActionStatement;
+    }
+}
+
+public sealed record DoWhileStatement(
+    Lexer.Token Do,
+    Lexer.Token WhileKeyword,
+    Lexer.Token Colon,
+    Expression ConditionExpression,
+    Statement ActionStatement
+) : Statement
+{
+    public override string Kind => nameof(DoWhileStatement);
+
+    public override IEnumerable<SyntaxNode> GetChildren()
+    {
+        yield return ConditionExpression;
+        yield return ActionStatement;
+    }
+}
+
 public sealed record ParenthesizedExpression(
     Lexer.Token OpenParenToken,
     Expression Expression,

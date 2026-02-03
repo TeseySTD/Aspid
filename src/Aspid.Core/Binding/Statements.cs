@@ -45,3 +45,25 @@ public sealed class BoundIfStatement(
 
     public override TypeSymbol Type => TypeSymbol.Void;
 }
+
+public sealed class BoundWhileStatement(
+    BoundNode condition,
+    BoundNode actionStatement
+) : BoundNode
+{
+    public BoundNode Condition { get; } = condition;
+    public BoundNode ActionStatement { get; } = actionStatement;
+
+    public override TypeSymbol Type => TypeSymbol.Void;
+}
+
+public sealed class BoundDoWhileStatement(
+    BoundNode condition,
+    BoundNode actionStatement
+) : BoundNode
+{
+    public BoundNode Condition { get; } = condition;
+    public BoundNode ActionStatement { get; } = actionStatement;
+
+    public override TypeSymbol Type => TypeSymbol.Void;
+}

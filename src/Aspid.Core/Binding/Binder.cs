@@ -21,6 +21,8 @@ public class Binder
             VariableDeclarationStatement declaration => BindVariableDeclarationStatement(declaration),
             AssignmentStatement assignment => BindAssignmentStatement(assignment),
             IfStatement ifStatement => BindIfStatement(ifStatement),
+            WhileStatement whileStatement => BindWhileStatement(whileStatement),
+            DoWhileStatement doWhileStatement => BindDoWhileStatement(doWhileStatement),
             ExpressionStatement es => BindExpression(es.Expression),
             _ => throw new NotImplementedException($"Binding for {statement.Kind} not implemented yet.")
         };
@@ -119,8 +121,8 @@ public class Binder
                 var errText = "Expression is not a valid array access.";
                 Diagnostics.Add(errText);
                 return new BoundErrorNode(errText);
-
             }
+
             var root = boundAccess.Array;
             while (root is BoundArrayAccessExpression nested) // For multidimensional  arrays
             {
@@ -134,7 +136,7 @@ public class Binder
                 return new BoundErrorNode(errText);
             }
 
-            var elementType = boundAccess.Type; 
+            var elementType = boundAccess.Type;
 
             if (elementType != TypeSymbol.Any)
             {
@@ -175,6 +177,40 @@ public class Binder
             : Bind(statement.ElseStatement);
 
         return new BoundIfStatement(condition, thenStatement, elseStatement);
+    }
+
+    private BoundNode BindWhileStatement(WhileStatement statement)
+    {
+        var condition = BindExpression(statement.ConditionExpression);
+
+        if (condition.Type != TypeSymbol.Bool)
+        {
+            var errText =
+                $"While statement has not a boolean condition at {statement.WhileKeyword.End}, {statement.Colon.Start}.";
+            Diagnostics.Add(errText);
+            return new BoundErrorNode(errText);
+        }
+
+        var actionStatement = Bind(statement.ActionStatement);
+
+        return new BoundWhileStatement(condition, actionStatement);
+    }
+
+    private BoundNode BindDoWhileStatement(DoWhileStatement statement)
+    {
+        var condition = BindExpression(statement.ConditionExpression);
+
+        if (condition.Type != TypeSymbol.Bool)
+        {
+            var errText =
+                $"do-while statement has not a boolean condition at {statement.WhileKeyword.End}, {statement.Colon.Start}.";
+            Diagnostics.Add(errText);
+            return new BoundErrorNode(errText);
+        }
+
+        var actionStatement = Bind(statement.ActionStatement);
+
+        return new BoundDoWhileStatement(condition, actionStatement);
     }
 
 
@@ -465,6 +501,12 @@ public class Binder
                     PrettyPrint(ifStatement.ElseStatement!, indent, isLast: true, optionalLabel: "Else Statement: ");
                 break;
 
+            case BoundWhileStatement whileStatement:
+                PrettyPrint(whileStatement.Condition, indent, isFirst: false, isLast: false,
+                    optionalLabel: "Condition: ");
+                PrettyPrint(whileStatement.ActionStatement, indent, isLast: true, optionalLabel: "Action Statement: ");
+                break;
+
             case BoundBlockStatement blockStatement:
                 for (int i = 0; i < blockStatement.Statements.Count; i++)
                     PrettyPrint(blockStatement.Statements[i], indent, i == blockStatement.Statements.Count - 1);
@@ -532,6 +574,11 @@ public class Binder
                 Console.ForegroundColor = ConsoleColor.Blue;
                 Console.Write(optionalLabel);
                 Console.Write("If statement");
+                break;
+            case BoundWhileStatement:
+                Console.ForegroundColor = ConsoleColor.Blue;
+                Console.Write(optionalLabel);
+                Console.Write("While statement");
                 break;
             case BoundBlockStatement:
                 Console.ForegroundColor = ConsoleColor.Green;

@@ -52,6 +52,8 @@ public class Evaluator
             BoundAssignmentStatement a => EvaluateAssignment(a),
             BoundArrayAssignmentStatement a => EvaluateArrayAssignment(a),
             BoundIfStatement ifStatement => EvaluateIfStatement(ifStatement),
+            BoundWhileStatement whileStatement => EvaluateWhileStatement(whileStatement),
+            BoundDoWhileStatement whileStatement => EvaluateDoWhileStatement(whileStatement),
 
             // Expressions
             BoundLiteralExpression l => l.Value,
@@ -145,6 +147,29 @@ public class Evaluator
         return null;
     }
 
+    private object? EvaluateWhileStatement(BoundWhileStatement node)
+    {
+        var condition = (bool?)(Evaluate(node.Condition) ?? null);
+        while (condition is true)
+        {
+            Evaluate(node.ActionStatement);
+            condition = (bool?)(Evaluate(node.Condition) ?? null);
+        }
+
+        return null;
+    }
+
+    private object? EvaluateDoWhileStatement(BoundDoWhileStatement node)
+    {
+        bool? condition;
+        do
+        {
+            Evaluate(node.ActionStatement);
+            condition = (bool?)(Evaluate(node.Condition) ?? null);
+        } 
+        while (condition is true);
+        return null;
+    }
 
     private object EvaluateConversion(BoundConversionExpression node)
     {

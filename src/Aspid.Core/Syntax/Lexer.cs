@@ -44,6 +44,8 @@ public static class Lexer
         False,
         If,
         Else,
+        Do,
+        While,
 
         // Terminal
         UndefinedToken,
@@ -282,6 +284,8 @@ public static class Lexer
             "else" => LexerTokenKind.Else,
             "true" => LexerTokenKind.True,
             "false" => LexerTokenKind.False,
+            "do" => LexerTokenKind.Do,
+            "while" => LexerTokenKind.While,
             _ => LexerTokenKind.Id
         };
 
