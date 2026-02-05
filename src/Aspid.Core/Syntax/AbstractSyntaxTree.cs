@@ -162,6 +162,40 @@ public sealed record VariableDeclarationStatement(
     }
 }
 
+public sealed record FunctionDeclarationStatement(
+    Lexer.Token FnKeyword,
+    Lexer.Token Name,
+    Lexer.Token OParen,
+    List<ParameterSyntax> Arguments,
+    Lexer.Token CParen,
+    Lexer.Token? ArrowType,
+    Lexer.Token? ReturnType,
+    Lexer.Token Colon,
+    Statement Body
+) : Statement
+{
+    public override string Kind => nameof(FunctionDeclarationStatement);
+
+    public override IEnumerable<SyntaxNode> GetChildren()
+    {
+        foreach (var expression in Arguments)
+            yield return expression;
+        yield return Body;
+    }
+}
+public sealed record ParameterSyntax(
+    Lexer.Token Identifier,
+    Lexer.Token? Colon,
+    Lexer.Token? TypeAnnotation
+) : SyntaxNode
+{
+    public override string Kind => nameof(ParameterSyntax);
+
+    public override IEnumerable<SyntaxNode> GetChildren()
+    {
+        yield break; 
+    }
+}
 public sealed record IfStatement(
     Lexer.Token IfKeyword,
     Lexer.Token Colon,
@@ -228,6 +262,20 @@ public sealed record ForInStatement(
     {
         yield return Enumerator;
         yield return ActionStatement;
+    }
+}
+
+public sealed record ReturnStatement(
+    Lexer.Token ReturnKeyword,
+    Expression? Expression
+) : Statement
+{
+    public override string Kind => nameof(ReturnStatement);
+
+    public override IEnumerable<SyntaxNode> GetChildren()
+    {
+        if (Expression != null)
+            yield return Expression;
     }
 }
 

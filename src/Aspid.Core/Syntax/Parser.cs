@@ -81,6 +81,12 @@ public class Parser(string text)
             Peek(1).Kind == Lexer.LexerTokenKind.Colon)
             return ParseVariableDeclaration();
 
+        if (Current.Kind == Lexer.LexerTokenKind.Fn)
+            return ParseFunctionDeclarationStatement();
+
+        if (Current.Kind == Lexer.LexerTokenKind.Return)
+            return ParseReturnStatement();
+
         if ((Current.Kind == Lexer.LexerTokenKind.Id && Peek(1).Kind == Lexer.LexerTokenKind.Eq) ||
             (Current.Kind == Lexer.LexerTokenKind.Id && Peek(1).Kind == Lexer.LexerTokenKind.OBracket))
             return ParseAssignmentStatement();
@@ -95,7 +101,7 @@ public class Parser(string text)
 
         if (Current.Kind == Lexer.LexerTokenKind.While)
             return ParseWhileStatement();
-        
+
         if (Current.Kind == Lexer.LexerTokenKind.Do)
             return ParseDoWhileStatement();
 
@@ -159,6 +165,68 @@ public class Parser(string text)
         var initializer = ParseExpression();
 
         return new VariableDeclarationStatement(identifier, typeIdentifier, initializer);
+    }
+
+    private Statement ParseFunctionDeclarationStatement()
+    {
+        var fnKeyword = Match(Lexer.LexerTokenKind.Fn) ?? throw new Exception("Expected function");
+        var identifier = Match(Lexer.LexerTokenKind.Id) ?? throw new Exception("Expected identifier");
+        var oParen = Match(Lexer.LexerTokenKind.OParen) ?? throw new Exception("Expected '('");
+
+        var arguments = new List<ParameterSyntax>();
+        if (Current.Kind != Lexer.LexerTokenKind.CParen)
+        {
+            while (true)
+            {
+                arguments.Add(ParseParameter());
+
+                if (Current.Kind != Lexer.LexerTokenKind.Comma)
+                    break;
+
+                NextToken(); // Eat ','
+            }
+        }
+
+        var cParen = Match(Lexer.LexerTokenKind.CParen) ?? throw new Exception("Expected ')'");
+        var typeArrow = Match(Lexer.LexerTokenKind.TypeArrow);
+        var returnType = Match(Lexer.LexerTokenKind.Id);
+
+        if (typeArrow is not null && returnType is null)
+            throw new Exception("Expected type after -> type declaration.");
+        if (typeArrow is null && returnType is not null)
+            throw new Exception("Expected -> before type in function type declaration.");
+
+        var colon = Match(Lexer.LexerTokenKind.Colon) ?? throw new Exception("Expected ':'.");
+        var body = ParseStatement();
+        return new FunctionDeclarationStatement(
+            fnKeyword,
+            identifier,
+            oParen,
+            arguments,
+            cParen,
+            typeArrow,
+            returnType,
+            colon,
+            body
+        );
+    }
+
+    private ParameterSyntax ParseParameter()
+    {
+        var identifier = Match(Lexer.LexerTokenKind.Id)
+                         ?? throw new Exception("Expected parameter name.");
+
+        Lexer.Token? colon = null;
+        Lexer.Token? typeAnnotation = null;
+
+        if (Current.Kind == Lexer.LexerTokenKind.Colon)
+        {
+            colon = NextToken();
+            typeAnnotation = Match(Lexer.LexerTokenKind.Id)
+                             ?? throw new Exception("Expected type after ':' in parameter.");
+        }
+
+        return new ParameterSyntax(identifier, colon, typeAnnotation);
     }
 
     private Statement ParseAssignmentStatement()
@@ -233,7 +301,7 @@ public class Parser(string text)
         var variable = Match(Lexer.LexerTokenKind.Id) ?? throw new Exception("Expected Variable");
         var inKeyword = Match(Lexer.LexerTokenKind.In) ?? throw new Exception("Expected In keyword");
         var enumerator = ParseExpression();
-        var colon  = Match(Lexer.LexerTokenKind.Colon) ?? throw new Exception("Expected Colon");
+        var colon = Match(Lexer.LexerTokenKind.Colon) ?? throw new Exception("Expected Colon");
         var actionStatement = ParseStatement();
         return new ForInStatement(forKeyword, variable, inKeyword, enumerator, colon, actionStatement);
     }
@@ -404,6 +472,20 @@ public class Parser(string text)
             throw new Exception("Expected ')'");
 
         return new CallExpression(function, arguments);
+    }
+
+    private ReturnStatement ParseReturnStatement()
+    {
+        var returnKeyword = Match(Lexer.LexerTokenKind.Return) ?? throw new Exception("Expected 'return'");
+        if (Current.Kind == Lexer.LexerTokenKind.EndOfFile ||
+            Current.Kind == Lexer.LexerTokenKind.NewLine ||
+            Current.Kind == Lexer.LexerTokenKind.Dedent) 
+        {
+            return new ReturnStatement(returnKeyword, null); // empty return
+        }
+
+        var expression = ParseExpression();
+        return new(returnKeyword, expression);
     }
 
     public static void PrettyPrint(SyntaxNode node, string indent = "", bool isFirst = false, bool isLast = true)

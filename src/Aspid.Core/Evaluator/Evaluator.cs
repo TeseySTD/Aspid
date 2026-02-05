@@ -5,18 +5,19 @@ namespace Aspid.Core.Evaluator;
 
 public class Evaluator
 {
-    private readonly Stack<Dictionary<string, object>> _scopes = new();
+    private readonly Stack<ExecutionScope> _scopes = new();
 
-    public Evaluator(Dictionary<string, object> globalVariables)
+    public Evaluator(Dictionary<string, object> globalVariables, Dictionary<FunctionSymbol, Func<object[], object?>> globalFunctions)
     {
-        _scopes.Push(globalVariables);
+        var scope = new ExecutionScope(globalVariables, globalFunctions);
+        _scopes.Push(scope);
     }
 
     private object GetVariable(string name)
     {
         foreach (var scope in _scopes)
         {
-            if (scope.TryGetValue(name, out var value))
+            if (scope.TryGetVariable(name, out var value))
                 return value;
         }
 
@@ -27,20 +28,56 @@ public class Evaluator
     {
         foreach (var scope in _scopes)
         {
-            if (scope.ContainsKey(name))
+            if (scope.IsVariableDeclared(name))
             {
-                scope[name] = value;
+                scope.SetVariable(name, value);
                 return;
             }
         }
 
-        _scopes.Peek()[name] = value;
+        _scopes.Peek().SetVariable(name, value);
     }
 
     private void DeclareVariable(string name, object value)
     {
-        _scopes.Peek()[name] = value;
+        if (_scopes.Peek().IsVariableDeclared(name))
+            throw new Exception($"Variable '{name}' is already declared in runtime.");
+        _scopes.Peek().SetVariable(name, value);
     }
+
+
+    private Func<object[], object?> GetFunction(FunctionSymbol symbol)
+    {
+        foreach (var scope in _scopes)
+        {
+            if (scope.TryGetFunction(symbol, out var value))
+                return value;
+        }
+
+        throw new Exception($"Function '{symbol.Name}' not found in runtime.");
+    }
+
+    private void SetFunction(FunctionSymbol symbol, Func<object[], object?> value)
+    {
+        foreach (var scope in _scopes)
+        {
+            if (scope.IsFunctionDeclared(symbol))
+            {
+                scope.SetFunction(symbol, value);
+                return;
+            }
+        }
+
+        _scopes.Peek().SetFunction(symbol, value);
+    }
+
+    private void DeclareFunction(FunctionSymbol symbol, Func<object[], object?> value)
+    {
+        if (_scopes.Peek().IsFunctionDeclared(symbol))
+            throw new Exception($"Function '{symbol.Name}' is already declared in runtime.");
+        _scopes.Peek().SetFunction(symbol, value);
+    }
+
 
     public object? Evaluate(BoundNode node)
     {
@@ -48,13 +85,16 @@ public class Evaluator
         {
             // Statements
             BoundBlockStatement bl => EvaluateBlockStatement(bl),
-            BoundVariableDeclarationStatement v => EvaluateVariableDeclaration(v),
+            BoundVariableDeclarationStatement v => EvaluateVariableDeclarationStatement(v),
+            BoundFunctionDeclarationStatement f => EvaluateFunctionDeclarationStatement(f),
             BoundAssignmentStatement a => EvaluateAssignment(a),
             BoundArrayAssignmentStatement a => EvaluateArrayAssignment(a),
             BoundIfStatement ifStatement => EvaluateIfStatement(ifStatement),
             BoundWhileStatement whileStatement => EvaluateWhileStatement(whileStatement),
             BoundDoWhileStatement whileStatement => EvaluateDoWhileStatement(whileStatement),
             BoundForInStatement forInStatement => EvaluateForInStatement(forInStatement),
+            BoundReturnStatement returnStatement => EvaluateReturnStatement(returnStatement),
+            
 
             // Expressions
             BoundLiteralExpression l => l.Value,
@@ -75,7 +115,7 @@ public class Evaluator
 
     private object? EvaluateBlockStatement(BoundBlockStatement node)
     {
-        _scopes.Push(new Dictionary<string, object>());
+        _scopes.Push(new());
 
         foreach (var statement in node.Statements)
         {
@@ -87,7 +127,7 @@ public class Evaluator
         return null;
     }
 
-    private object? EvaluateVariableDeclaration(BoundVariableDeclarationStatement node)
+    private object? EvaluateVariableDeclarationStatement(BoundVariableDeclarationStatement node)
     {
         var value = node.Initializer != null ? Evaluate(node.Initializer) : 0; // Set empty value to declared-only var
 
@@ -97,6 +137,43 @@ public class Evaluator
         DeclareVariable(node.Variable.Name, value);
 
         return value;
+    }
+
+    private object EvaluateFunctionDeclarationStatement(BoundFunctionDeclarationStatement node)
+    {
+        var value = CompileUserFunction(node);
+        DeclareFunction(node.Function, value);
+        return value;
+    }
+
+    private Func<object[], object?> CompileUserFunction(BoundFunctionDeclarationStatement node)
+    {
+        return (args) =>
+        {
+            var functionScope = new ExecutionScope();
+
+            for (int i = 0; i < node.Function.Parameters.Count; i++)
+            {
+                functionScope.SetVariable(node.Function.Parameters[i].Name, args[i]);
+            }
+
+            _scopes.Push(functionScope);
+
+            try
+            {
+                Evaluate(node.Action);
+            }
+            catch (ReturnException ex)
+            {
+                return ex.Value;
+            }
+            finally
+            {
+                _scopes.Pop();
+            }
+
+            return null;
+        };
     }
 
     private object EvaluateAssignment(BoundAssignmentStatement node)
@@ -182,7 +259,7 @@ public class Evaluator
 
             foreach (var item in list)
             {
-                _scopes.Peek()[variableName] = item;
+                _scopes.Peek().SetVariable(variableName, item);
 
                 Evaluate(node.ActionStatement);
             }
@@ -194,7 +271,12 @@ public class Evaluator
             $"Unexpected type '{collection?.GetType().Name}' in for-loop. Expected Array (List<object>).");
     }
 
-
+    private object? EvaluateReturnStatement(BoundReturnStatement node)
+    {
+        var exceptionValue = node.Expression == null ? null : Evaluate(node.Expression);
+        throw new ReturnException(exceptionValue);
+    }
+    
     private object EvaluateConversion(BoundConversionExpression node)
     {
         var value = Evaluate(node.Expression);
@@ -270,12 +352,8 @@ public class Evaluator
     {
         var args = node.Arguments.Select(Evaluate).ToArray();
 
-        if (BuiltInFunctions.Implementations.TryGetValue(node.Function, out var implementation))
-        {
-            return implementation(args!);
-        }
-
-        throw new Exception($"Function {node.Function.Name} is not implemented.");
+        var implementation = GetFunction(node.Function);
+        return implementation(args!);
     }
 
     private object EvaluateUnaryExpression(BoundUnaryExpression node)

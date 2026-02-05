@@ -27,6 +27,7 @@ public static class Lexer
         CBracket,
         Comma,
         Not,
+        TypeArrow,
         Indent,
         Dedent,
         NewLine,
@@ -48,6 +49,8 @@ public static class Lexer
         While,
         For,
         In,
+        Fn,
+        Return,
 
         // Terminal
         UndefinedToken,
@@ -62,6 +65,7 @@ public static class Lexer
         ("-=", LexerTokenKind.MinusEq),
         ("++", LexerTokenKind.PlusPlus),
         ("--", LexerTokenKind.MinusMinus),
+        ("->", LexerTokenKind.TypeArrow),
         ("=", LexerTokenKind.Eq),
         ("+", LexerTokenKind.Plus),
         ("-", LexerTokenKind.Minus),
@@ -290,6 +294,8 @@ public static class Lexer
             "while" => LexerTokenKind.While,
             "for" => LexerTokenKind.For,
             "in" => LexerTokenKind.In,
+            "fn" => LexerTokenKind.Fn,
+            "return" => LexerTokenKind.Return,
             _ => LexerTokenKind.Id
         };
 

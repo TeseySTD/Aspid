@@ -54,6 +54,10 @@ public sealed record TypeSymbol
     }
 }
 
+public sealed record FunctionSymbol(string Name, List<ParameterSymbol> Parameters, TypeSymbol Type);
+
+public sealed record ParameterSymbol(string Name, TypeSymbol Type);
+
 public abstract class BoundNode
 {
     public abstract TypeSymbol Type { get; }

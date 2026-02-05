@@ -14,6 +14,13 @@ public sealed class BoundVariableDeclarationStatement(BoundVariableExpression va
     public override TypeSymbol Type => TypeSymbol.Void;
 }
 
+public sealed class BoundFunctionDeclarationStatement(FunctionSymbol function, BoundNode action) : BoundNode
+{
+    public FunctionSymbol Function { get; } = function;
+    public BoundNode Action { get; } = action;
+    public override TypeSymbol Type => Function.Type;
+}
+
 public sealed class BoundAssignmentStatement(BoundVariableExpression variable, BoundNode expression) : BoundNode
 {
     public BoundVariableExpression Variable { get; } = variable;
@@ -78,4 +85,12 @@ public sealed class BoundForInStatement(
     public BoundNode Enumerator { get; } = enumerator;
     public BoundNode ActionStatement { get; } = actionStatement;
     public override TypeSymbol Type => TypeSymbol.Void;
+}
+
+public sealed class BoundReturnStatement(BoundNode? expression) : BoundNode
+{
+    public BoundNode? Expression { get; } = expression;
+    
+    public override TypeSymbol Type => Expression?.Type ?? TypeSymbol.Void;
+    
 }

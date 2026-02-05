@@ -1,12 +1,14 @@
-﻿using Aspid.Core.Binding;
+﻿using Aspid.Core;
+using Aspid.Core.Binding;
 using Aspid.Core.Evaluator;
 using Aspid.Core.Syntax;
 
 var globalScope = new BoundScope(null);
 var globalVariables = new Dictionary<string, object>();
+var globalFunctions = new Dictionary<FunctionSymbol, Func<object[], object?>>(BuiltInFunctions.Implementations);
 
 var binder = new Binder(globalScope);
-var evaluator = new Evaluator(globalVariables);
+var evaluator = new Evaluator(globalVariables, globalFunctions);
 
 if (args.Length > 0)
 {

@@ -19,11 +19,13 @@ public class Binder
         {
             BlockStatement block => BindBlockStatement(block),
             VariableDeclarationStatement declaration => BindVariableDeclarationStatement(declaration),
+            FunctionDeclarationStatement declaration => BindFunctionDeclarationStatement(declaration),
             AssignmentStatement assignment => BindAssignmentStatement(assignment),
             IfStatement ifStatement => BindIfStatement(ifStatement),
             WhileStatement whileStatement => BindWhileStatement(whileStatement),
             DoWhileStatement doWhileStatement => BindDoWhileStatement(doWhileStatement),
             ForInStatement forInStatement => BindForInStatement(forInStatement),
+            ReturnStatement returnStatement => BindReturnStatement(returnStatement),
             ExpressionStatement es => BindExpression(es.Expression),
             _ => throw new NotImplementedException($"Binding for {statement.Kind} not implemented yet.")
         };
@@ -69,12 +71,87 @@ public class Binder
             return new BoundErrorNode(assignWrongTypeError);
         }
 
-        if (_scope.TryDeclare(name, type))
+        if (_scope.TryDeclareVariable(name, type))
             return new BoundVariableDeclarationStatement(variable, initializer);
 
         var alreadyDeclaredError = $"Cannot declare variable with name {name} because it is already declared.";
         Diagnostics.Add(alreadyDeclaredError);
         return new BoundErrorNode(alreadyDeclaredError);
+    }
+
+    private BoundNode BindFunctionDeclarationStatement(FunctionDeclarationStatement declaration)
+    {
+        var name = declaration.Name.Text;
+        if (_scope.TryLookupVariable(name, out _) || _scope.TryLookupFunction(name, out _))
+        {
+            var errText = $"Symbol '{name}' is already declared in this scope.";
+            Diagnostics.Add(errText);
+            return new BoundErrorNode(errText);
+        }
+
+        if (TypeSymbol.Parse(name) != null)
+        {
+            var errText = $"Function {declaration.Name.Text} is already declared type.";
+            Diagnostics.Add(errText);
+            return new BoundErrorNode(errText);
+        }
+
+        var arguments = new List<ParameterSymbol>();
+        var isAnyArgsError = false;
+        foreach (var arg in declaration.Arguments)
+        {
+            var paramName = arg.Identifier.Text;
+            var paramType = TypeSymbol.Parse(arg.TypeAnnotation?.Text ?? "any");
+            if (paramType is null)
+            {
+                Diagnostics.Add($"In function {name} parameter {paramName} has no correct type annotation.");
+                isAnyArgsError = true;
+            }
+
+            if (arguments.Any(a => a.Name == paramName))
+            {
+                Diagnostics.Add($"In function {name} parameter {paramName} is already declared.");
+                isAnyArgsError = true;
+            }
+
+            arguments.Add(new(paramName, paramType ?? TypeSymbol.Any));
+        }
+
+        if (isAnyArgsError)
+        {
+            var errText = $"Function {name} has an invalid arguments.";
+            Diagnostics.Add(errText);
+            return new BoundErrorNode(errText);
+        }
+
+        var type = TypeSymbol.Parse(declaration.ReturnType?.Text ?? "void");
+        if (type is null)
+        {
+            var errText = $"Function {name} has no correct return type.";
+            Diagnostics.Add(errText);
+            return new BoundErrorNode(errText);
+        }
+
+        var funcSymbol = new FunctionSymbol(name, arguments, type);
+
+        if (!_scope.TryDeclareFunction(funcSymbol))
+        {
+            Diagnostics.Add($"Cannot declare function {name}.");
+        }
+
+        _scope = new BoundScope(_scope);
+
+        foreach (var p in arguments)
+        {
+            if (!_scope.TryDeclareVariable(p.Name, p.Type))
+                Diagnostics.Add($"Parameter '{p.Name}' is already declared.");
+        }
+
+        var action = Bind(declaration.Body);
+
+        _scope = _scope.Parent!;
+
+        return new BoundFunctionDeclarationStatement(funcSymbol, action);
     }
 
     private BoundNode BindAssignmentStatement(AssignmentStatement assignment)
@@ -84,7 +161,7 @@ public class Binder
         if (assignment.Identifier is VariableExpression variableExpr)
         {
             var name = variableExpr.VariableName.Text;
-            if (_scope.TryLookup(name, out var existingType))
+            if (_scope.TryLookupVariable(name, out var existingType))
             {
                 if (existingType != TypeSymbol.Any)
                 {
@@ -103,7 +180,7 @@ public class Binder
             }
             else
             {
-                _scope.TryDeclare(name, TypeSymbol.Any);
+                _scope.TryDeclareVariable(name, TypeSymbol.Any);
             }
 
             var variable = new BoundVariableExpression(name, expression.Type);
@@ -231,7 +308,7 @@ public class Binder
 
         var name = statement.Variable.Text;
 
-        if (!_scope.TryDeclare(name, variableType))
+        if (!_scope.TryDeclareVariable(name, variableType))
         {
             Diagnostics.Add($"Variable '{name}' is already declared in this scope.");
         }
@@ -246,7 +323,15 @@ public class Binder
         return new BoundForInStatement(variableDeclarationStatement, enumeratorExpression, actionsStatement);
     }
 
-
+    private BoundNode BindReturnStatement(ReturnStatement statement)
+    {
+        if (statement.Expression == null)
+            return new BoundReturnStatement(null);
+        var expression = BindExpression(statement.Expression);
+        return new BoundReturnStatement(expression);
+    }
+    
+    
     private BoundNode BindExpression(Expression syntax)
     {
         return syntax switch
@@ -284,32 +369,48 @@ public class Binder
                 return new BoundConversionExpression(typeSymbol, argument);
             }
 
-            var builtin = BuiltInFunctions.GetAll().FirstOrDefault(f => f.Name == name);
-            if (builtin != null)
+            if (!_scope.TryLookupFunction(name, out var functionSymbol))
             {
-                var boundArgs = syntax.Arguments.Select(BindExpression).ToList();
-                if (builtin.Parameters.Any(p =>
-                        p.Type != TypeSymbol.Any &&
-                        boundArgs[builtin.Parameters.IndexOf(p)].Type != TypeSymbol.Any &&
-                        p.Type != boundArgs[builtin.Parameters.IndexOf(p)].Type
-                    ))
+                functionSymbol = BuiltInFunctions.GetAll().FirstOrDefault(f => f.Name == name);
+            }
+
+            if (functionSymbol == null)
+            {
+                var errText = $"Function '{name}' does not exist.";
+                Diagnostics.Add(errText);
+                return new BoundErrorNode(errText);
+            }
+
+            var boundArgs = syntax.Arguments.Select(BindExpression).ToList();
+
+            if (boundArgs.Count != functionSymbol.Parameters.Count)
+            {
+                var errText =
+                    $"Function '{name}' expects {functionSymbol.Parameters.Count} arguments, but got {boundArgs.Count}.";
+                Diagnostics.Add(errText);
+                return new BoundErrorNode(errText);
+            }
+
+            for (int i = 0; i < functionSymbol.Parameters.Count; i++)
+            {
+                var parameter = functionSymbol.Parameters[i];
+                var argument = boundArgs[i];
+
+                if (parameter.Type != TypeSymbol.Any && argument.Type != TypeSymbol.Any &&
+                    argument.Type != parameter.Type)
                 {
                     var errText =
-                        $"Invalid args for function {name}: {string.Join(", ", boundArgs.Select(p => p.ToString()))}";
+                        $"Argument '{parameter.Name}' type mismatch. Expected {parameter.Type}, got {argument.Type}.";
                     Diagnostics.Add(errText);
                     return new BoundErrorNode(errText);
                 }
-
-                return new BoundCallExpression(builtin, boundArgs);
             }
 
-            {
-                Diagnostics.Add($"Function {vExpr.VariableName} is not supported");
-            }
+            return new BoundCallExpression(functionSymbol, boundArgs);
         }
 
         Diagnostics.Add("Non-declared functions are not supported for now");
-        return new BoundErrorNode("");
+        return new BoundErrorNode("Non-declared functions are not supported for now");
     }
 
     private BoundNode BindNumberExpression(NumberExpression syntax)
@@ -396,7 +497,7 @@ public class Binder
     private BoundNode BindVariableExpression(VariableExpression syntax)
     {
         var name = syntax.VariableName.Text;
-        if (!_scope.TryLookup(name, out var type))
+        if (!_scope.TryLookupVariable(name, out var type))
         {
             var errText = $"Variable '{name}' does not exist.";
             Diagnostics.Add(errText);
