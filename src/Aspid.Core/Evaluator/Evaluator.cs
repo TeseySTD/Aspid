@@ -359,9 +359,14 @@ public class Evaluator
     private object EvaluateUnaryExpression(BoundUnaryExpression node)
     {
         object operand = node.Operand;
-        if (node.Op.Kind != BoundUnaryOperatorKind.PreIncrement && node.Op.Kind != BoundUnaryOperatorKind.PreDecrement)
+        if (node.Op.Kind != BoundUnaryOperatorKind.PreIncrement &&
+            node.Op.Kind != BoundUnaryOperatorKind.PreDecrement &&
+            node.Op.Kind != BoundUnaryOperatorKind.PostIncrement && 
+            node.Op.Kind != BoundUnaryOperatorKind.PostDecrement)
+        {
             operand = Evaluate(node.Operand) ??
                       throw new Exception($"Unexpected node {node.Operand.Type} in unary expression.");
+        }
 
         return node.Op.Kind switch
         {
@@ -404,7 +409,7 @@ public class Evaluator
 
             if (value is int oldInt)
             {
-                var change = (int)amount; 
+                var change = (int)amount;
                 var newVal = oldInt + change;
                 SetVariable(v.Name, newVal);
                 return returnNew ? newVal : oldInt;
