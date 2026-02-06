@@ -7,7 +7,8 @@ public class Evaluator
 {
     private readonly Stack<ExecutionScope> _scopes = new();
 
-    public Evaluator(Dictionary<string, object> globalVariables, Dictionary<FunctionSymbol, Func<object[], object?>> globalFunctions)
+    public Evaluator(Dictionary<string, object> globalVariables,
+        Dictionary<FunctionSymbol, Func<object[], object?>> globalFunctions)
     {
         var scope = new ExecutionScope(globalVariables, globalFunctions);
         _scopes.Push(scope);
@@ -389,7 +390,7 @@ public class Evaluator
                 return -d;
             if (operand is int i)
                 return -i;
-            throw new Exception($"Unexpected - unary operator with any type");
+            throw new Exception($"Operator '-' cannot be applied to operand of type '{operand.GetType()}'");
         }
 
         throw new Exception($"Unexpected type {node.Type} for negation");
@@ -397,27 +398,42 @@ public class Evaluator
 
     private object ChangeValue(BoundVariableExpression v, object amount, bool returnNew)
     {
-        if (v.Type == TypeSymbol.Int)
+        if (v.Type == TypeSymbol.Int || v.Type == TypeSymbol.Double || v.Type == TypeSymbol.Any)
         {
-            var oldVal = (int)GetVariable(v.Name);
-            var newVal = oldVal + (int)amount;
-            SetVariable(v.Name, newVal);
-            return returnNew ? newVal : oldVal;
+            var value = GetVariable(v.Name);
+
+            if (value is int oldInt)
+            {
+                var change = (int)amount; 
+                var newVal = oldInt + change;
+                SetVariable(v.Name, newVal);
+                return returnNew ? newVal : oldInt;
+            }
+
+            if (value is double oldDouble)
+            {
+                var change = (int)amount;
+
+                var newVal = oldDouble + change;
+                SetVariable(v.Name, newVal);
+                return returnNew ? newVal : oldDouble;
+            }
+
+            throw new Exception($"Operator '++' or '--' cannot be applied to operand of type '{value.GetType().Name}'");
         }
 
-        if (v.Type == TypeSymbol.Double)
-        {
-            var oldVal = (double)GetVariable(v.Name);
-            var newVal = oldVal + (double)amount;
-            SetVariable(v.Name, newVal);
-            return returnNew ? newVal : oldVal;
-        }
-
-        throw new InvalidOperationException();
+        throw new InvalidOperationException($"Cannot increment variable of type {v.Type}");
     }
+
 
     private bool EvaluateLogicalNegation(BoundUnaryExpression node, object operand)
     {
+        if (node.Type == TypeSymbol.Any)
+        {
+            if (operand is bool b) return !b;
+            throw new Exception($"Operator '!' cannot be applied to operand of type '{operand.GetType()}'");
+        }
+
         if (!node.Type.IsBoolean)
             throw new Exception($"Non-boolean type in unary operator {node.Op.Kind} is not supported");
         return !(bool)operand;

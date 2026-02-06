@@ -59,15 +59,16 @@ public sealed class BoundUnaryOperator
 
     public static BoundUnaryOperator? Bind(BoundUnaryOperatorKind kind, TypeSymbol operandType)
     {
+        var isOperandEqualsAny = operandType == TypeSymbol.Any;
         return kind switch
         {
-            Identity when operandType.IsNumeric => new(Lexer.LexerTokenKind.Plus, kind, operandType),
-            Negation when operandType.IsNumeric => new(Lexer.LexerTokenKind.Minus, kind, operandType),
-            PreIncrement when operandType.IsNumeric => new(Lexer.LexerTokenKind.PlusPlus, kind, operandType),
-            PostIncrement when operandType.IsNumeric => new(Lexer.LexerTokenKind.PlusPlus, kind, operandType),
-            PreDecrement when operandType.IsNumeric => new(Lexer.LexerTokenKind.MinusMinus, kind, operandType),
-            PostDecrement when operandType.IsNumeric => new(Lexer.LexerTokenKind.MinusMinus, kind, operandType),
-            LogicalNegation when operandType.IsBoolean => new(Lexer.LexerTokenKind.Not, kind, operandType),
+            Identity when operandType.IsNumeric || isOperandEqualsAny => new(Lexer.LexerTokenKind.Plus, kind, operandType),
+            Negation when operandType.IsNumeric || isOperandEqualsAny => new(Lexer.LexerTokenKind.Minus, kind, operandType),
+            PreIncrement when operandType.IsNumeric || isOperandEqualsAny => new(Lexer.LexerTokenKind.PlusPlus, kind, operandType),
+            PostIncrement when operandType.IsNumeric || isOperandEqualsAny => new(Lexer.LexerTokenKind.PlusPlus, kind, operandType),
+            PreDecrement when operandType.IsNumeric || isOperandEqualsAny => new(Lexer.LexerTokenKind.MinusMinus, kind, operandType),
+            PostDecrement when operandType.IsNumeric || isOperandEqualsAny => new(Lexer.LexerTokenKind.MinusMinus, kind, operandType),
+            LogicalNegation when operandType.IsBoolean || isOperandEqualsAny => new(Lexer.LexerTokenKind.Not, kind, operandType),
             _ => null
         };
     }
