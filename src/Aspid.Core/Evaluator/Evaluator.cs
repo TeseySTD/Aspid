@@ -94,7 +94,6 @@ public class Evaluator
             BoundDoWhileStatement whileStatement => EvaluateDoWhileStatement(whileStatement),
             BoundForInStatement forInStatement => EvaluateForInStatement(forInStatement),
             BoundReturnStatement returnStatement => EvaluateReturnStatement(returnStatement),
-            
 
             // Expressions
             BoundLiteralExpression l => l.Value,
@@ -276,7 +275,7 @@ public class Evaluator
         var exceptionValue = node.Expression == null ? null : Evaluate(node.Expression);
         throw new ReturnException(exceptionValue);
     }
-    
+
     private object EvaluateConversion(BoundConversionExpression node)
     {
         var value = Evaluate(node.Expression);

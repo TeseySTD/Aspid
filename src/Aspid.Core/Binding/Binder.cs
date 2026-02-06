@@ -7,6 +7,7 @@ public class Binder
 {
     private BoundScope _scope;
     public List<string> Diagnostics { get; } = new();
+    private FunctionSymbol? _currentFunction;
 
     public Binder(BoundScope? parent)
     {
@@ -124,15 +125,15 @@ public class Binder
             return new BoundErrorNode(errText);
         }
 
-        var type = TypeSymbol.Parse(declaration.ReturnType?.Text ?? "void");
-        if (type is null)
+        var definedReturnType = TypeSymbol.Parse(declaration.ReturnType?.Text ?? "void");
+        if (definedReturnType is null)
         {
             var errText = $"Function {name} has no correct return type.";
             Diagnostics.Add(errText);
             return new BoundErrorNode(errText);
         }
 
-        var funcSymbol = new FunctionSymbol(name, arguments, type);
+        var funcSymbol = new FunctionSymbol(name, arguments, definedReturnType);
 
         if (!_scope.TryDeclareFunction(funcSymbol))
         {
@@ -147,7 +148,11 @@ public class Binder
                 Diagnostics.Add($"Parameter '{p.Name}' is already declared.");
         }
 
+        var previousFunction = _currentFunction;
+
+        _currentFunction = funcSymbol;
         var action = Bind(declaration.Body);
+        _currentFunction = previousFunction;
 
         _scope = _scope.Parent!;
 
@@ -325,13 +330,51 @@ public class Binder
 
     private BoundNode BindReturnStatement(ReturnStatement statement)
     {
-        if (statement.Expression == null)
+        if (_currentFunction == null)
+        {
+            Diagnostics.Add("Return statement is not allowed outside of a function.");
+            return new BoundErrorNode("Return statement is not allowed outside of a function.");
+        }
+
+        BoundNode? expression = null;
+        if (statement.Expression != null)
+        {
+            expression = BindExpression(statement.Expression);
+        }
+
+        if (_currentFunction.Type == TypeSymbol.Void)
+        {
+            if (expression != null)
+            {
+                Diagnostics.Add($"Function '{_currentFunction.Name}' is void and cannot return a value.");
+                return new BoundErrorNode($"Function '{_currentFunction.Name}' is void and cannot return a value.");
+            }
+
             return new BoundReturnStatement(null);
-        var expression = BindExpression(statement.Expression);
-        return new BoundReturnStatement(expression);
+        }
+
+        if (expression == null)
+        {
+            var errText =
+                $"Function '{_currentFunction.Name}' expects return type '{_currentFunction.Type}', but returns nothing.";
+            Diagnostics.Add(errText);
+            return new BoundErrorNode(errText);
+        }
+
+        var convertedExpression = BindConversion(expression, _currentFunction.Type);
+
+        if (_currentFunction.Type != TypeSymbol.Any && convertedExpression.Type != _currentFunction.Type)
+        {
+            var errText =
+                $"Function '{_currentFunction.Name}' expects return type '{_currentFunction.Type}', but got '{expression.Type}'.";
+            Diagnostics.Add(errText);
+            return new BoundErrorNode(errText);
+        }
+
+        return new BoundReturnStatement(convertedExpression);
     }
-    
-    
+
+
     private BoundNode BindExpression(Expression syntax)
     {
         return syntax switch
