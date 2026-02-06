@@ -8,8 +8,14 @@ public enum BoundBinaryOperatorKind
     Subtraction,
     Multiplication,
     Division,
+
+    // Comparison
     Equals,
     NotEquals,
+    Less,
+    LessOrEquals,
+    Greater,
+    GreaterOrEquals
 }
 
 public sealed record BoundBinaryOperator
@@ -35,7 +41,11 @@ public sealed record BoundBinaryOperator
         [Lexer.LexerTokenKind.Star] = BoundBinaryOperatorKind.Multiplication,
         [Lexer.LexerTokenKind.Div] = BoundBinaryOperatorKind.Division,
         [Lexer.LexerTokenKind.EqEq] = BoundBinaryOperatorKind.Equals,
-        [Lexer.LexerTokenKind.NotEq] = BoundBinaryOperatorKind.NotEquals
+        [Lexer.LexerTokenKind.NotEq] = BoundBinaryOperatorKind.NotEquals,
+        [Lexer.LexerTokenKind.Greater] = BoundBinaryOperatorKind.Greater,
+        [Lexer.LexerTokenKind.GreaterOrEqual] = BoundBinaryOperatorKind.GreaterOrEquals,
+        [Lexer.LexerTokenKind.Less] = BoundBinaryOperatorKind.Less,
+        [Lexer.LexerTokenKind.LessOrEqual] = BoundBinaryOperatorKind.LessOrEquals,
     };
 
     public static BoundBinaryOperatorKind? GetOperatorKind(Lexer.LexerTokenKind kind)
@@ -43,14 +53,25 @@ public sealed record BoundBinaryOperator
 
     public static BoundBinaryOperator? Bind(BoundBinaryOperatorKind kind, TypeSymbol left, TypeSymbol right)
     {
+        // Equality
         if (kind == BoundBinaryOperatorKind.Equals || kind == BoundBinaryOperatorKind.NotEquals)
         {
             if (left == right)
                 return new BoundBinaryOperator(kind, left, right, TypeSymbol.Bool);
-            if (left.IsNumeric && right.IsNumeric) // Numeric types can be comparable
+            if (left.IsNumeric && right.IsNumeric)
                 return new BoundBinaryOperator(kind, left, right, TypeSymbol.Bool);
             if (left == TypeSymbol.Any || right == TypeSymbol.Any) // Allow to compare with any
-                return new BoundBinaryOperator(kind, left, right, TypeSymbol.Bool); 
+                return new BoundBinaryOperator(kind, left, right, TypeSymbol.Bool);
+        }
+
+        // Relational
+        if (kind == BoundBinaryOperatorKind.Less || kind == BoundBinaryOperatorKind.LessOrEquals ||
+            kind == BoundBinaryOperatorKind.Greater || kind == BoundBinaryOperatorKind.GreaterOrEquals)
+        {
+            if (left.IsNumeric && right.IsNumeric)
+                return new BoundBinaryOperator(kind, left, right, TypeSymbol.Bool);
+            if (left == TypeSymbol.Any || right == TypeSymbol.Any) // Allow to compare with any
+                return new BoundBinaryOperator(kind, left, right, TypeSymbol.Bool);
         }
 
         if (left == TypeSymbol.Any || right == TypeSymbol.Any)

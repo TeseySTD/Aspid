@@ -33,7 +33,9 @@ public class Parser(string text)
         {
             Lexer.LexerTokenKind.Star or Lexer.LexerTokenKind.Div => 3,
             Lexer.LexerTokenKind.Plus or Lexer.LexerTokenKind.Minus => 2,
-            Lexer.LexerTokenKind.EqEq or Lexer.LexerTokenKind.NotEq => 1,
+            Lexer.LexerTokenKind.EqEq or Lexer.LexerTokenKind.NotEq or 
+            Lexer.LexerTokenKind.Greater or Lexer.LexerTokenKind.Less or
+            Lexer.LexerTokenKind.GreaterOrEqual or Lexer.LexerTokenKind.LessOrEqual => 1,
             _ => 0
         };
     }

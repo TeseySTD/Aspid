@@ -361,7 +361,7 @@ public class Evaluator
         object operand = node.Operand;
         if (node.Op.Kind != BoundUnaryOperatorKind.PreIncrement &&
             node.Op.Kind != BoundUnaryOperatorKind.PreDecrement &&
-            node.Op.Kind != BoundUnaryOperatorKind.PostIncrement && 
+            node.Op.Kind != BoundUnaryOperatorKind.PostIncrement &&
             node.Op.Kind != BoundUnaryOperatorKind.PostDecrement)
         {
             operand = Evaluate(node.Operand) ??
@@ -459,6 +459,10 @@ public class Evaluator
             BoundBinaryOperatorKind.Division => EvaluateDivision(node, left, right),
             BoundBinaryOperatorKind.Equals => EvaluateEquals(left, right),
             BoundBinaryOperatorKind.NotEquals => !EvaluateEquals(left, right),
+            BoundBinaryOperatorKind.Greater => EvaluateNumericComparison(left, right, (l, r) => l > r),
+            BoundBinaryOperatorKind.GreaterOrEquals => EvaluateNumericComparison(left, right, (l, r) => l >= r),
+            BoundBinaryOperatorKind.Less => EvaluateNumericComparison(left, right, (l, r) => l < r),
+            BoundBinaryOperatorKind.LessOrEquals => EvaluateNumericComparison(left, right, (l, r) => l <= r),
             _ => throw new Exception($"Unexpected binary operator {node.Op.Kind}")
         };
     }
@@ -538,6 +542,19 @@ public class Evaluator
 
         return Equals(left, right);
     }
+
+    private bool EvaluateNumericComparison(object left, object right, Func<double, double, bool> operation)
+    {
+        if (IsNumeric(left) && IsNumeric(right))
+        {
+            var l = Convert.ToDouble(left);
+            var r = Convert.ToDouble(right);
+            return operation(l, r);
+        }
+
+        throw new Exception($"Cannot compare types: {left.GetType()} and {right.GetType()}");
+    }
+
 
     private static bool IsNumeric(object obj) => obj is int or double;
 }
