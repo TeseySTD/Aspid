@@ -43,6 +43,8 @@ public static class Lexer
         MinusMinus,
         GreaterOrEqual,
         LessOrEqual,
+        AmpersandAmpersand,
+        VerticalBarVerticalBar,
 
         // Keywords
         True,
@@ -71,6 +73,8 @@ public static class Lexer
         ("--", LexerTokenKind.MinusMinus),
         (">=", LexerTokenKind.GreaterOrEqual),
         ("<=", LexerTokenKind.GreaterOrEqual),
+        ("&&", LexerTokenKind.AmpersandAmpersand),
+        ("||", LexerTokenKind.VerticalBarVerticalBar),
         ("->", LexerTokenKind.TypeArrow),
         ("=", LexerTokenKind.Eq),
         ("+", LexerTokenKind.Plus),

@@ -463,25 +463,36 @@ public class Evaluator
             BoundBinaryOperatorKind.GreaterOrEquals => EvaluateNumericComparison(left, right, (l, r) => l >= r),
             BoundBinaryOperatorKind.Less => EvaluateNumericComparison(left, right, (l, r) => l < r),
             BoundBinaryOperatorKind.LessOrEquals => EvaluateNumericComparison(left, right, (l, r) => l <= r),
+            BoundBinaryOperatorKind.LogicalAnd => EvaluateLogicalOperator(left, right, (l,r) => l && r),
+            BoundBinaryOperatorKind.LogicalOr => EvaluateLogicalOperator(left, right, (l, r) => l || r),
             _ => throw new Exception($"Unexpected binary operator {node.Op.Kind}")
         };
     }
 
     private object EvaluateAddition(BoundBinaryExpression node, object left, object right)
     {
-        if (node.Type == TypeSymbol.String) return Convert.ToString(left) + Convert.ToString(right);
-        if (node.Type == TypeSymbol.Double) return Convert.ToDouble(left) + Convert.ToDouble(right);
-        if (node.Type == TypeSymbol.Int) return Convert.ToInt32(left) + Convert.ToInt32(right);
+        if (node.Type == TypeSymbol.String)
+            return Convert.ToString(left, CultureInfo.InvariantCulture) +
+                   Convert.ToString(right, CultureInfo.InvariantCulture);
+        if (node.Type == TypeSymbol.Double)
+            return Convert.ToDouble(left, CultureInfo.InvariantCulture) +
+                   Convert.ToDouble(right, CultureInfo.InvariantCulture);
+        if (node.Type == TypeSymbol.Int)
+            return Convert.ToInt32(left, CultureInfo.InvariantCulture) +
+                   Convert.ToInt32(right, CultureInfo.InvariantCulture);
 
         if (node.Type == TypeSymbol.Any)
         {
             if (left is string || right is string)
-                return Convert.ToString(left) + Convert.ToString(right);
+                return Convert.ToString(left, CultureInfo.InvariantCulture) +
+                       Convert.ToString(right, CultureInfo.InvariantCulture);
 
             if (left is double || right is double)
-                return Convert.ToDouble(left) + Convert.ToDouble(right);
+                return Convert.ToDouble(left, CultureInfo.InvariantCulture) +
+                       Convert.ToDouble(right, CultureInfo.InvariantCulture);
 
-            return Convert.ToInt32(left) + Convert.ToInt32(right);
+            return Convert.ToInt32(left, CultureInfo.InvariantCulture) +
+                   Convert.ToInt32(right, CultureInfo.InvariantCulture);
         }
 
         throw new Exception($"Unexpected types for addition: {left.GetType()} and {right.GetType()}");
@@ -490,14 +501,20 @@ public class Evaluator
 
     private object EvaluateSubtraction(BoundBinaryExpression node, object left, object right)
     {
-        if (node.Type == TypeSymbol.Double) return Convert.ToDouble(left) - Convert.ToDouble(right);
-        if (node.Type == TypeSymbol.Int) return Convert.ToInt32(left) - Convert.ToInt32(right);
+        if (node.Type == TypeSymbol.Double)
+            return Convert.ToDouble(left, CultureInfo.InvariantCulture) -
+                   Convert.ToDouble(right, CultureInfo.InvariantCulture);
+        if (node.Type == TypeSymbol.Int)
+            return Convert.ToInt32(left, CultureInfo.InvariantCulture) -
+                   Convert.ToInt32(right, CultureInfo.InvariantCulture);
         if (node.Type == TypeSymbol.Any)
         {
             if (left is double || right is double)
-                return Convert.ToDouble(left) - Convert.ToDouble(right);
+                return Convert.ToDouble(left, CultureInfo.InvariantCulture) -
+                       Convert.ToDouble(right, CultureInfo.InvariantCulture);
 
-            return Convert.ToInt32(left) - Convert.ToInt32(right);
+            return Convert.ToInt32(left, CultureInfo.InvariantCulture) -
+                   Convert.ToInt32(right, CultureInfo.InvariantCulture);
         }
 
         throw new Exception($"Unexpected types for subtraction: {left.GetType()} and {right.GetType()}");
@@ -505,14 +522,20 @@ public class Evaluator
 
     private object EvaluateMultiplication(BoundBinaryExpression node, object left, object right)
     {
-        if (node.Type == TypeSymbol.Double) return Convert.ToDouble(left) * Convert.ToDouble(right);
-        if (node.Type == TypeSymbol.Int) return Convert.ToInt32(left) * Convert.ToInt32(right);
+        if (node.Type == TypeSymbol.Double)
+            return Convert.ToDouble(left, CultureInfo.InvariantCulture) *
+                   Convert.ToDouble(right, CultureInfo.InvariantCulture);
+        if (node.Type == TypeSymbol.Int)
+            return Convert.ToInt32(left, CultureInfo.InvariantCulture) *
+                   Convert.ToInt32(right, CultureInfo.InvariantCulture);
         if (node.Type == TypeSymbol.Any)
         {
             if (left is double || right is double)
-                return Convert.ToDouble(left) * Convert.ToDouble(right);
+                return Convert.ToDouble(left, CultureInfo.InvariantCulture) *
+                       Convert.ToDouble(right, CultureInfo.InvariantCulture);
 
-            return Convert.ToInt32(left) * Convert.ToInt32(right);
+            return Convert.ToInt32(left, CultureInfo.InvariantCulture) *
+                   Convert.ToInt32(right, CultureInfo.InvariantCulture);
         }
 
         throw new Exception($"Unexpected types for multiplication: {left.GetType()} and {right.GetType()}");
@@ -520,14 +543,20 @@ public class Evaluator
 
     private object EvaluateDivision(BoundBinaryExpression node, object left, object right)
     {
-        if (node.Type == TypeSymbol.Double) return Convert.ToDouble(left) / Convert.ToDouble(right);
-        if (node.Type == TypeSymbol.Int) return Convert.ToInt32(left) / Convert.ToInt32(right);
+        if (node.Type == TypeSymbol.Double)
+            return Convert.ToDouble(left, CultureInfo.InvariantCulture) /
+                   Convert.ToDouble(right, CultureInfo.InvariantCulture);
+        if (node.Type == TypeSymbol.Int)
+            return Convert.ToInt32(left, CultureInfo.InvariantCulture) /
+                   Convert.ToInt32(right, CultureInfo.InvariantCulture);
         if (node.Type == TypeSymbol.Any)
         {
             if (left is double || right is double)
-                return Convert.ToDouble(left) / Convert.ToDouble(right);
+                return Convert.ToDouble(left, CultureInfo.InvariantCulture) /
+                       Convert.ToDouble(right, CultureInfo.InvariantCulture);
 
-            return Convert.ToInt32(left) / Convert.ToInt32(right);
+            return Convert.ToInt32(left, CultureInfo.InvariantCulture) /
+                   Convert.ToInt32(right, CultureInfo.InvariantCulture);
         }
 
         throw new Exception($"Unexpected types for division: {left.GetType()} and {right.GetType()}");
@@ -537,7 +566,8 @@ public class Evaluator
     {
         if (IsNumeric(left) && IsNumeric(right))
         {
-            return Math.Abs(Convert.ToDouble(left) - Convert.ToDouble(right)) < double.Epsilon;
+            return Math.Abs(Convert.ToDouble(left, CultureInfo.InvariantCulture) -
+                            Convert.ToDouble(right, CultureInfo.InvariantCulture)) < double.Epsilon;
         }
 
         return Equals(left, right);
@@ -547,14 +577,25 @@ public class Evaluator
     {
         if (IsNumeric(left) && IsNumeric(right))
         {
-            var l = Convert.ToDouble(left);
-            var r = Convert.ToDouble(right);
+            var l = Convert.ToDouble(left, CultureInfo.InvariantCulture);
+            var r = Convert.ToDouble(right, CultureInfo.InvariantCulture);
             return operation(l, r);
         }
 
         throw new Exception($"Cannot compare types: {left.GetType()} and {right.GetType()}");
     }
 
+    private bool EvaluateLogicalOperator(object left, object right, Func<bool, bool, bool> operation)
+    {
+        if (( left is not bool && !IsNumeric(left)) || ( right is not bool  && !IsNumeric(right)))
+        {
+            throw new Exception($"Cannot cast to bool types: {left.GetType()} and {right.GetType()}");
+        }
+
+        var l = Convert.ToBoolean(left, CultureInfo.InvariantCulture);
+        var r = Convert.ToBoolean(right, CultureInfo.InvariantCulture);
+        return operation(l, r);
+    }
 
     private static bool IsNumeric(object obj) => obj is int or double;
 }

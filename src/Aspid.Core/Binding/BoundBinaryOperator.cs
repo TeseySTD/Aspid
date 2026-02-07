@@ -15,7 +15,11 @@ public enum BoundBinaryOperatorKind
     Less,
     LessOrEquals,
     Greater,
-    GreaterOrEquals
+    GreaterOrEquals,
+
+    // Boolean
+    LogicalAnd,
+    LogicalOr,
 }
 
 public sealed record BoundBinaryOperator
@@ -46,6 +50,8 @@ public sealed record BoundBinaryOperator
         [Lexer.LexerTokenKind.GreaterOrEqual] = BoundBinaryOperatorKind.GreaterOrEquals,
         [Lexer.LexerTokenKind.Less] = BoundBinaryOperatorKind.Less,
         [Lexer.LexerTokenKind.LessOrEqual] = BoundBinaryOperatorKind.LessOrEquals,
+        [Lexer.LexerTokenKind.AmpersandAmpersand] = BoundBinaryOperatorKind.LogicalAnd,
+        [Lexer.LexerTokenKind.VerticalBarVerticalBar] = BoundBinaryOperatorKind.LogicalOr,
     };
 
     public static BoundBinaryOperatorKind? GetOperatorKind(Lexer.LexerTokenKind kind)
@@ -71,6 +77,18 @@ public sealed record BoundBinaryOperator
             if (left.IsNumeric && right.IsNumeric)
                 return new BoundBinaryOperator(kind, left, right, TypeSymbol.Bool);
             if (left == TypeSymbol.Any || right == TypeSymbol.Any) // Allow to compare with any
+                return new BoundBinaryOperator(kind, left, right, TypeSymbol.Bool);
+        }
+
+        // Boolean
+        if (kind == BoundBinaryOperatorKind.LogicalAnd || kind == BoundBinaryOperatorKind.LogicalOr)
+        {
+            if (left == TypeSymbol.Any || right == TypeSymbol.Any)
+                return new BoundBinaryOperator(kind, left, right, TypeSymbol.Bool);
+            if ((left.IsNumeric && right.IsNumeric) || (left.IsNumeric && right.IsBoolean) ||
+                (left.IsBoolean && right.IsNumeric))
+                return new BoundBinaryOperator(kind, left, right, TypeSymbol.Bool);
+            if (left.IsBoolean && right.IsBoolean)
                 return new BoundBinaryOperator(kind, left, right, TypeSymbol.Bool);
         }
 
